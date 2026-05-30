@@ -4,7 +4,7 @@ import { initShrimp } from './shrimp.js';
 import { ASSET_DEFS } from './pixi/assetDefs.js?v=19';
 import { SUBSTRATE_Y, WATERLINE_Y } from './pixi/constants.js';
 import { PixiStage } from './pixi/stage.js?v=19';
-import { SCAPE_PRESETS, REVIEW_URLS, clonePresetAssets } from './scapes.js?v=19';
+import { SCAPE_PRESETS, REVIEW_URLS, clonePresetAssets } from './scapes.js?v=20';
 
 const CANVAS_W = 280;
 const CANVAS_H = 156;
