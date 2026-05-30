@@ -70,7 +70,7 @@ SPECS = {
     # Fish
     'fish/neon_tetra': {
         'output': 'background/neon_tetra.png',
-        'frame_w': 18, 'frame_h': 8,
+        'frame_w': 40, 'frame_h': 18,    # Matches manifest frameGrid exactly
         'cols': 4, 'rows': 1,
         'num_frames': 4,
         'subject_type': 'fish',
@@ -137,7 +137,7 @@ def build_subject_list():
             ref_dir_val = f'shrimp/{synth_info[0]}' if synth_info else key
             SPECS[f'shrimp/{variant}/{sex}'] = {
                 'output': f'{output_key}.png',
-                'frame_w': 30, 'frame_h': 10,
+                'frame_w': 60, 'frame_h': 26,    # Matches manifest frameGrid exactly
                 'cols': 6, 'rows': 3,
                 'num_frames': 18,  # 6 cols x 3 rows: forage(6) + idle(6) + swim(6)
                 'subject_type': 'shrimp',
@@ -153,7 +153,7 @@ def build_subject_list():
         if variant == 'red_cherry':
             SPECS['shrimp/red_cherry/berried'] = {
                 'output': 'red_cherry_berried.png',
-                'frame_w': 30, 'frame_h': 10,
+                'frame_w': 60, 'frame_h': 26,
                 'cols': 6, 'rows': 3, 'num_frames': 18,
                 'subject_type': 'shrimp',
                 'category': 'shrimp',
@@ -259,7 +259,9 @@ def stage1_remove_background(source_path, out_dir, subject_key):
 
 def stage2_resize_intermediate(img_rgba, spec):
     fw, fh = spec['frame_w'], spec['frame_h']
-    iw, ih = fw * 3, fh * 3
+    # 5× gives the VGA downsample more pixels to work with → finer dithering
+    # grain and cleaner alpha edges while still landing at the FMV target size.
+    iw, ih = fw * 5, fh * 5
     return img_rgba.resize((iw, ih), Image.LANCZOS)
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -417,8 +419,11 @@ def stage6_vhs_grade(img_rgb, background=False):
 def stage7_bayer_dither(img_rgb):
     """Apply 8x8 Bayer ordered dithering to the shared VGA palette."""
     _, palette = get_palette()
+    # Threshold 256/6 ≈ 42 — less aggressive than the original 64.
+    # Keeps visible dithering grain (authentic FMV) while preserving
+    # enough colour fidelity that subjects are clearly readable at sprite size.
     dithered = hitherdither.ordered.bayer.bayer_dithering(
-        img_rgb, palette, [256 / 4, 256 / 4, 256 / 4], order=8
+        img_rgb, palette, [256 / 6, 256 / 6, 256 / 6], order=8
     )
     return dithered.convert('RGB')
 
