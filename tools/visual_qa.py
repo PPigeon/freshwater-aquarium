@@ -16,7 +16,7 @@ from dataclasses import dataclass, asdict
 from pathlib import Path
 from statistics import mean
 
-from PIL import Image, ImageDraw, ImageFont, ImageStat
+from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageStat
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -59,6 +59,7 @@ class AssetReport:
     opaque_ratio: float
     bbox_fill_ratio: float
     transparent_edge_rgb: int
+    edge_touch: int
     contrast: float
     color_count: int
     warnings: list[str]
@@ -98,6 +99,23 @@ def transparent_edge_rgb_count(img: Image.Image) -> int:
     return count
 
 
+def edge_touch_count(alpha: Image.Image) -> int:
+    w, h = alpha.size
+    px = alpha.load()
+    count = 0
+    for x in range(w):
+        if px[x, 0] > 0:
+            count += 1
+        if px[x, h - 1] > 0:
+            count += 1
+    for y in range(h):
+        if px[0, y] > 0:
+            count += 1
+        if px[w - 1, y] > 0:
+            count += 1
+    return count
+
+
 def color_count(img: Image.Image) -> int:
     rgba = img.convert("RGBA")
     colors = rgba.getcolors(maxcolors=1_000_000) or []
@@ -114,6 +132,7 @@ def analyze_asset(path: Path, group: str) -> AssetReport:
     bbox_area = 0 if not bbox else max(1, (bbox[2] - bbox[0]) * (bbox[3] - bbox[1]))
     bbox_fill_ratio = opaque / max(1, bbox_area)
     rgb_bleed = transparent_edge_rgb_count(img)
+    edge_touch = edge_touch_count(alpha)
     luma = ImageStat.Stat(img.convert("L"), mask=alpha).stddev[0] if opaque else 0.0
     colors = color_count(img)
 
@@ -124,6 +143,8 @@ def analyze_asset(path: Path, group: str) -> AssetReport:
         warnings.append("wispy-or-sparse-bbox")
     if rgb_bleed > 6:
         warnings.append("transparent-edge-rgb")
+    if group == "hardscape" and edge_touch > max(12, int((w + h) * 0.12)):
+        warnings.append("touches-frame-edge")
     if group in {"shrimp", "fish"} and luma < 18:
         warnings.append("low-creature-contrast")
     if group in {"hardscape", "plants"} and colors > 512:
@@ -137,10 +158,33 @@ def analyze_asset(path: Path, group: str) -> AssetReport:
         opaque_ratio=round(opaque_ratio, 4),
         bbox_fill_ratio=round(bbox_fill_ratio, 4),
         transparent_edge_rgb=rgb_bleed,
+        edge_touch=edge_touch,
         contrast=round(luma, 2),
         color_count=colors,
         warnings=warnings,
     )
+
+
+def apply_shrimp_cohort_checks(reports: list[AssetReport]) -> None:
+    target = {
+        "assets/sprites/red_cherry_male.png",
+        "assets/sprites/red_cherry_female.png",
+        "assets/sprites/red_cherry_berried.png",
+    }
+    by_path = {r.path: r for r in reports if r.path in target}
+    if "assets/sprites/red_cherry_male.png" not in by_path:
+        return
+    male_path = ROOT / "assets" / "sprites" / "red_cherry_male.png"
+    male = Image.open(male_path).convert("RGBA").convert("LA")
+    for path in ["assets/sprites/red_cherry_female.png", "assets/sprites/red_cherry_berried.png"]:
+        report = by_path.get(path)
+        if not report:
+            continue
+        img = Image.open(ROOT / path).convert("RGBA").convert("LA")
+        delta = ImageChops.difference(male, img).split()[0]
+        mean_diff = ImageStat.Stat(delta).mean[0]
+        if mean_diff > 22:
+            report.warnings.append("cohort-shape-drift")
 
 
 def checker_tile(size: int = 8) -> Image.Image:
@@ -217,11 +261,18 @@ def write_markdown(reports: list[AssetReport], out_dir: Path) -> None:
 def run(out_dir: Path) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     reports: list[AssetReport] = []
+    grouped_existing: dict[str, list[Path]] = {}
     for group, paths in GROUPS.items():
         existing = [p for p in paths if p.exists()]
-        group_reports = [analyze_asset(p, group) for p in existing]
-        reports.extend(group_reports)
-        make_sheet(group, existing, group_reports, out_dir)
+        grouped_existing[group] = existing
+        reports.extend([analyze_asset(p, group) for p in existing])
+
+    apply_shrimp_cohort_checks(reports)
+    report_by_group: dict[str, list[AssetReport]] = {}
+    for r in reports:
+        report_by_group.setdefault(r.group, []).append(r)
+    for group, existing in grouped_existing.items():
+        make_sheet(group, existing, report_by_group.get(group, []), out_dir)
 
     (out_dir / "visual_qa_report.json").write_text(
         json.dumps([asdict(r) for r in reports], indent=2),

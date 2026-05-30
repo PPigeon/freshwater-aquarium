@@ -26,7 +26,7 @@ import sys, os, math, json, hashlib, io, argparse
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageFilter, ImageEnhance
+from PIL import Image, ImageFilter, ImageEnhance, ImageDraw
 from rembg import remove, new_session
 
 PYTHON = sys.executable
@@ -105,7 +105,7 @@ SPECS = {
         'subject_type': 'plant_multi', 'category': 'plant',
     },
     # Hardscape
-    'hardscape/stone_seiryu': {'output': 'hardscape/stone_seiryu_lg.png', 'frame_w': 60, 'frame_h': 40, 'cols': 1, 'rows': 1, 'num_frames': 1, 'subject_type': 'hardscape', 'category': 'hardscape'},
+    'hardscape/stone_seiryu': {'output': 'hardscape/stone_seiryu_lg.png', 'frame_w': 60, 'frame_h': 40, 'cols': 1, 'rows': 1, 'num_frames': 1, 'subject_type': 'hardscape_seiryu', 'category': 'hardscape'},
     'hardscape/stone_dragon': {'output': 'hardscape/stone_dragon.png',    'frame_w': 70, 'frame_h': 45, 'cols': 1, 'rows': 1, 'num_frames': 1, 'subject_type': 'hardscape', 'category': 'hardscape'},
     'hardscape/stone_lava':   {'output': 'hardscape/stone_lava.png',      'frame_w': 50, 'frame_h': 35, 'cols': 1, 'rows': 1, 'num_frames': 1, 'subject_type': 'hardscape', 'category': 'hardscape'},
     'hardscape/stone_frodo':  {'output': 'hardscape/stone_frodo.png',     'frame_w': 65, 'frame_h': 40, 'cols': 1, 'rows': 1, 'num_frames': 1, 'subject_type': 'hardscape', 'category': 'hardscape'},
@@ -178,7 +178,7 @@ def build_subject_list():
     SPECS['hardscape/stone_seiryu_sm'] = {
         'output': 'hardscape/stone_seiryu_sm.png',
         'frame_w': 35, 'frame_h': 24, 'cols': 1, 'rows': 1, 'num_frames': 1,
-        'subject_type': 'hardscape', 'category': 'hardscape',
+        'subject_type': 'hardscape_seiryu', 'category': 'hardscape',
         'ref_dir': 'hardscape/stone_seiryu',  # Reuse the same reference
     }
 
@@ -203,6 +203,49 @@ def subject_intermediate_dir(subject_key):
     d = INTERMEDIATES / safe
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+
+def alpha_edge_touch(alpha):
+    w, h = alpha.size
+    px = alpha.load()
+    count = 0
+    for x in range(w):
+        if px[x, 0] > 0:
+            count += 1
+        if px[x, h - 1] > 0:
+            count += 1
+    for y in range(h):
+        if px[0, y] > 0:
+            count += 1
+        if px[w - 1, y] > 0:
+            count += 1
+    return count
+
+
+def choose_best_hardscape_reference(ref_images, out_dir, subject_key):
+    """
+    Pick the least edge-clipped hardscape source after background removal.
+    Uses cached S1 outputs, so repeated runs stay fast.
+    """
+    best = None
+    best_score = None
+    for src_path in ref_images:
+        img_rgba = stage1_remove_background(src_path, out_dir, subject_key)
+        alpha = img_rgba.getchannel('A')
+        touch = alpha_edge_touch(alpha)
+        bbox = alpha.getbbox()
+        if not bbox:
+            score = (10_000, 0, src_path.name)
+        else:
+            bw = max(1, bbox[2] - bbox[0])
+            bh = max(1, bbox[3] - bbox[1])
+            # Prefer low edge touch, then larger usable subject area.
+            score = (touch, -(bw * bh), src_path.name)
+        if best_score is None or score < best_score:
+            best_score = score
+            best = src_path
+    return best if best is not None else ref_images[0]
+
 
 def det_seed(subject_key, frame_idx):
     """Deterministic seed from subject + frame index."""
@@ -248,6 +291,61 @@ def cleanup_alpha_edges(img_rgba, subject_type='sprite'):
         alpha.astype(np.uint8)
     ))
     return Image.fromarray(out, 'RGBA')
+
+
+def _tint_sheet(base_sheet, sat=1.0, contrast=1.0, bright=1.0):
+    rgb, alpha = split_alpha(base_sheet.convert('RGBA'))
+    rgb = ImageEnhance.Color(rgb).enhance(sat)
+    rgb = ImageEnhance.Contrast(rgb).enhance(contrast)
+    rgb = ImageEnhance.Brightness(rgb).enhance(bright)
+    return merge_alpha(rgb, alpha)
+
+
+def _overlay_berried_cluster(sheet_rgba, frame_w=60, frame_h=26, cols=6, rows=3):
+    out = sheet_rgba.convert('RGBA')
+    draw = ImageDraw.Draw(out)
+    px = out.load()
+    egg_colors = [(230, 174, 86, 230), (221, 154, 73, 220), (198, 130, 62, 220)]
+
+    for row in range(rows):
+        for col in range(cols):
+            x0 = col * frame_w
+            y0 = row * frame_h
+            frame = out.crop((x0, y0, x0 + frame_w, y0 + frame_h))
+            alpha = frame.getchannel('A')
+            bbox = alpha.getbbox()
+            if not bbox:
+                continue
+            min_x, min_y, max_x, max_y = bbox
+            body_w = max_x - min_x
+            body_h = max_y - min_y
+            if body_w < 6 or body_h < 4:
+                continue
+
+            # Egg cluster under rear abdomen; only paint where body alpha exists.
+            center_x = x0 + min_x + int(body_w * 0.58)
+            center_y = y0 + min_y + int(body_h * 0.73)
+            for i, (ox, oy) in enumerate([(0, 0), (2, 0), (-2, 1), (1, 2), (-1, 2)]):
+                tx = center_x + ox
+                ty = center_y + oy
+                if tx < x0 or tx >= x0 + frame_w or ty < y0 or ty >= y0 + frame_h:
+                    continue
+                if px[tx, ty][3] < 24:
+                    continue
+                draw.point((tx, ty), fill=egg_colors[i % len(egg_colors)])
+
+    return out
+
+
+def derive_red_cherry_variant(male_sheet_path, mode):
+    base = Image.open(male_sheet_path).convert('RGBA')
+    if mode == 'female':
+        # Keep the same sprite language, just a subtle body-tone shift.
+        return _tint_sheet(base, sat=0.95, contrast=1.02, bright=0.98)
+    if mode == 'berried':
+        female = _tint_sheet(base, sat=0.93, contrast=1.03, bright=0.97)
+        return _overlay_berried_cluster(female)
+    return base
 
 # ──────────────────────────────────────────────────────────────────────────────
 # STAGE 1: BACKGROUND REMOVAL
@@ -299,12 +397,20 @@ def stage1_remove_background(source_path, out_dir, subject_key):
 # STAGE 2: RESIZE TO INTERMEDIATE RESOLUTION (3x game size)
 # ──────────────────────────────────────────────────────────────────────────────
 
-def stage2_resize_intermediate(img_rgba, spec):
+def stage2_resize_intermediate(img_rgba, spec, subject_key=''):
     fw, fh = spec['frame_w'], spec['frame_h']
     # 5× gives the VGA downsample more pixels to work with → finer dithering
     # grain and cleaner alpha edges while still landing at the FMV target size.
     iw, ih = fw * 5, fh * 5
-    return img_rgba.resize((iw, ih), Image.LANCZOS)
+    src = img_rgba
+    if subject_key == 'hardscape/wood_manzanita':
+        # Preserve branch tips in frame by adding breathing room before resize.
+        pad_x = max(8, int(src.width * 0.12))
+        pad_y = max(8, int(src.height * 0.10))
+        padded = Image.new('RGBA', (src.width + pad_x * 2, src.height + pad_y * 2), (0, 0, 0, 0))
+        padded.paste(src, (pad_x, pad_y), src)
+        src = padded
+    return src.resize((iw, ih), Image.LANCZOS)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # STAGE 3: ANIMATION FRAME SYNTHESIS (elastic deformation via scipy)
@@ -408,6 +514,18 @@ def stage6_vhs_grade(img_rgb, subject_type='sprite', background=False):
         img_w = ImageEnhance.Brightness(img_w).enhance(0.55)
         return img_w
 
+    if subject_type == 'hardscape_seiryu':
+        # Seiryu needs cleaner strata and less VHS breakup than driftwood.
+        warm = np.array([[1.00, 0.00, 0.00],
+                         [0.00, 1.00, 0.00],
+                         [0.00, -0.01, 0.98]])
+        arr = np.einsum('...j,kj->...k', arr, warm).clip(0, 1)
+        img_w = Image.fromarray((arr * 255).astype(np.uint8), 'RGB')
+        img_w = ImageEnhance.Color(img_w).enhance(0.90)
+        img_w = ImageEnhance.Contrast(img_w).enhance(1.02)
+        img_w = ImageEnhance.Brightness(img_w).enhance(0.99)
+        return img_w
+
     if subject_type == 'hardscape':
         # Keep hardscape natural, but push it a little farther toward the same
         # digitized-FMV space as the fauna and plants so it stops reading like a
@@ -491,6 +609,8 @@ def stage7_subject_dither(img_rgb, subject_type='sprite'):
     threshold = 10.0
     if subject_type == 'hardscape':
         threshold = 13.0
+    elif subject_type == 'hardscape_seiryu':
+        threshold = 8.2
     elif subject_type == 'fish':
         threshold = 8.5
     elif subject_type in ('plant', 'plant_multi'):
@@ -517,6 +637,8 @@ def stage8_subject_cinepak(img_rgb, subject_type='sprite'):
     pull = 0.05
     if subject_type == 'hardscape':
         pull = 0.10
+    elif subject_type == 'hardscape_seiryu':
+        pull = 0.045
     elif subject_type == 'fish':
         pull = 0.07
     return stage8_cinepak_blocks(img_rgb, pull=pull)
@@ -538,6 +660,9 @@ def stage9_subject_analog(img_rgb, subject_type='sprite'):
     if subject_type == 'hardscape':
         blur_radius = 0.55
         sharpen = 1.35
+    elif subject_type == 'hardscape_seiryu':
+        blur_radius = 0.36
+        sharpen = 1.58
     elif subject_type == 'fish':
         blur_radius = 0.35
         sharpen = 1.75
@@ -700,6 +825,8 @@ def process_frame(img_rgba_intermediate, frame_w, frame_h, subject_type='sprite'
         final_sharpen = 1.55
         if subject_type == 'hardscape':
           final_sharpen = 1.18
+        elif subject_type == 'hardscape_seiryu':
+          final_sharpen = 1.32
         elif subject_type == 'fish':
           final_sharpen = 1.38
         rgb_s = ImageEnhance.Sharpness(rgb_s).enhance(final_sharpen)
@@ -753,6 +880,20 @@ def process_subject(subject_key, spec, dry_run=False):
         print(f"  -> Would output: {output_path}")
         return None
 
+    # Keep red cherry cohort morphology unified: derive female/berried variants
+    # from the canonical male sheet, then apply controlled finishing tweaks.
+    if subject_key in ('shrimp/red_cherry/female', 'shrimp/red_cherry/berried'):
+        male_path = OUTPUT_ROOT / 'red_cherry_male.png'
+        mode = 'female' if subject_key.endswith('/female') else 'berried'
+        if male_path.exists():
+            derived = derive_red_cherry_variant(male_path, mode=mode)
+            derived = cleanup_alpha_edges(derived, subject_type='shrimp')
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            derived.save(output_path)
+            print(f"  [COHORT] Derived from red_cherry_male ({mode}) -> {output_path}")
+            return [derived]
+        print("  [COHORT] red_cherry_male missing; falling back to full process.")
+
     fw, fh       = spec['frame_w'], spec['frame_h']
     subject_type = spec['subject_type']
     rows         = spec.get('rows', 1)
@@ -783,7 +924,7 @@ def process_subject(subject_key, spec, dry_run=False):
                 img_rgba_full = apply_hue_shift(img_rgba_full, hue_shift, sat_f, val_f)
 
             # Stage 2: Resize
-            img_rgba_inter = stage2_resize_intermediate(img_rgba_full, spec)
+            img_rgba_inter = stage2_resize_intermediate(img_rgba_full, spec, subject_key=subject_key)
 
             # Stage 3: Generate 'cols' frames with row-specific mild deformation
             row_deform = SHRIMP_ROW_DEFORM[row_idx] if row_idx < len(SHRIMP_ROW_DEFORM) else {'sigma': 2.0, 'smoothing': 18}
@@ -806,6 +947,9 @@ def process_subject(subject_key, spec, dry_run=False):
 
     # ── Single-reference path (plants, hardscape, fish, single-photo shrimp) ─
     source_path = ref_images[0]
+    if subject_type.startswith('hardscape') and len(ref_images) > 1:
+        source_path = choose_best_hardscape_reference(ref_images, out_dir, subject_key)
+        print(f"  [REF] Selected best-framed hardscape source: {source_path.name}")
 
     # Stage 1: Background removal
     img_rgba_full = stage1_remove_background(source_path, out_dir, subject_key)
@@ -819,7 +963,7 @@ def process_subject(subject_key, spec, dry_run=False):
         img_rgba_full = apply_hue_shift(img_rgba_full, hue_shift, sat_f, val_f)
 
     # Stage 2: Resize to 5× game resolution
-    img_rgba_inter = stage2_resize_intermediate(img_rgba_full, spec)
+    img_rgba_inter = stage2_resize_intermediate(img_rgba_full, spec, subject_key=subject_key)
     # Save intermediate for inspection
     inter_path = out_dir / 'intermediate.png'
     img_rgba_inter.save(inter_path)

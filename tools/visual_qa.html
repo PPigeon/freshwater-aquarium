@@ -106,6 +106,20 @@ function transparentEdgeRgb(data, w, h) {
   return count;
 }
 
+function edgeTouchCount(data, w, h) {
+  let count = 0;
+  const atA = (x, y) => data[(y * w + x) * 4 + 3];
+  for (let x = 0; x < w; x++) {
+    if (atA(x, 0)) count++;
+    if (atA(x, h - 1)) count++;
+  }
+  for (let y = 0; y < h; y++) {
+    if (atA(0, y)) count++;
+    if (atA(w - 1, y)) count++;
+  }
+  return count;
+}
+
 function analyze(path, group, img) {
   const { data, width: w, height: h } = imageData(img);
   let opaque = 0;
@@ -132,9 +146,11 @@ function analyze(path, group, img) {
   const opaqueRatio = opaque / area;
   const bboxFill = opaque / bboxArea;
   const bleed = transparentEdgeRgb(data, w, h);
+  const edgeTouch = edgeTouchCount(data, w, h);
   if (group !== 'background' && opaqueRatio < 0.015) warnings.push('tiny-silhouette');
   if (group !== 'background' && bboxFill < 0.10) warnings.push('wispy-or-sparse-bbox');
   if (bleed > 6) warnings.push('transparent-edge-rgb');
+  if (group === 'hardscape' && edgeTouch > Math.max(12, Math.floor((w + h) * 0.12))) warnings.push('touches-frame-edge');
   if ((group === 'shrimp' || group === 'fish') && contrast < 18) warnings.push('low-creature-contrast');
   if ((group === 'hardscape' || group === 'plants') && colors.size > 512) warnings.push('palette-may-read-photographic');
   return {
@@ -145,10 +161,43 @@ function analyze(path, group, img) {
     opaqueRatio: +opaqueRatio.toFixed(4),
     bboxFill: +bboxFill.toFixed(4),
     transparentEdgeRgb: bleed,
+    edgeTouch,
     contrast: +contrast.toFixed(2),
     colorCount: colors.size,
     warnings,
   };
+}
+
+function shrimpCohortDrift(entries) {
+  const male = entries.find(e => e.report.path === 'red_cherry_male.png');
+  if (!male) return;
+  const measure = (a, b) => {
+    const ca = document.createElement('canvas');
+    ca.width = a.naturalWidth;
+    ca.height = a.naturalHeight;
+    const ctxa = ca.getContext('2d', { willReadFrequently: true });
+    ctxa.drawImage(a, 0, 0);
+    const da = ctxa.getImageData(0, 0, ca.width, ca.height).data;
+    const cb = document.createElement('canvas');
+    cb.width = b.naturalWidth;
+    cb.height = b.naturalHeight;
+    const ctxb = cb.getContext('2d', { willReadFrequently: true });
+    ctxb.drawImage(b, 0, 0);
+    const db = ctxb.getImageData(0, 0, cb.width, cb.height).data;
+    let sum = 0;
+    for (let i = 0; i < da.length; i += 4) {
+      const la = da[i] * 0.299 + da[i + 1] * 0.587 + da[i + 2] * 0.114;
+      const lb = db[i] * 0.299 + db[i + 1] * 0.587 + db[i + 2] * 0.114;
+      sum += Math.abs(la - lb);
+    }
+    return sum / (da.length / 4);
+  };
+  for (const item of entries) {
+    if (item.report.path === 'red_cherry_male.png') continue;
+    if (measure(male.img, item.img) > 22) {
+      item.report.warnings.push('cohort-shape-drift');
+    }
+  }
 }
 
 function drawSheet(group, assets) {
@@ -203,6 +252,9 @@ async function run() {
       } catch (err) {
         allReports.push({ group, path, warnings: [String(err)] });
       }
+    }
+    if (group === 'shrimp') {
+      shrimpCohortDrift(loaded);
     }
     const flagged = loaded.filter(a => a.report.warnings.length).length;
     const section = document.createElement('section');
