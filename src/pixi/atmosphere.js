@@ -42,7 +42,6 @@ export class Atmosphere {
     this._bgMode = null;
     this._buildWater();
     this._buildSubstrate();
-    this._buildSubstrateCap();
     this._buildCaustics();
     this._buildLightCone();
     this._buildDepthHaze();
@@ -71,17 +70,15 @@ export class Atmosphere {
   _buildWater() {
     const L = this.layers.waterBack;
 
-    // Room background belongs behind the water, never over the planted tank.
+    // Room background behind the water column.
     try {
       this.roomBg = this._atlasSprite('room_bg', GW, GH, 1.0);
       L.addChildAt(this.roomBg, 0);
     } catch (_) {
-      this.roomBg = null; // Asset not yet generated — silently skip
+      this.roomBg = null;
     }
 
     // Solid base colour (tinted per background mode).
-    // Scoped to the inner water area only so the room background
-    // shows at the bezel edges.
     this.baseFill = fullSprite(Texture.WHITE, GW - BEZEL_SIDE * 2, SUBSTRATE_Y - WATERLINE_Y);
     this.baseFill.x = BEZEL_SIDE;
     this.baseFill.y = WATERLINE_Y;
@@ -89,13 +86,12 @@ export class Atmosphere {
     L.addChild(this.baseFill);
 
     // Atlas water tile — bilinear filtered (via registry) for smooth tiling.
-    // Tighter tileScale (0.5) keeps individual tile seams below the eye.
     this.waterTile = this._atlasTiling('water_tile', GW, GH, 0.5);
     this.waterTile.alpha = 0.18;
     this.waterTile.blendMode = 'normal';
     L.addChild(this.waterTile);
 
-    // Depth gradient: darker overall for FMV-era tank mood.
+    // Depth gradient: darker at bottom, lighter blue at top.
     const grad = verticalGradient(GH, [
       [0.00, 'rgba(55,118,152,0.48)'],
       [0.22, 'rgba(28,85,120,0.26)'],
@@ -105,28 +101,12 @@ export class Atmosphere {
     this.waterGrad = fullSprite(grad, GW, GH);
     L.addChild(this.waterGrad);
 
-    // A soft top light-shaft from the LED side.
-    const shaft = radial(256, [
-      [0, 'rgba(190,225,245,0.16)'],
-      [0.5, 'rgba(150,200,235,0.05)'],
-      [1, 'rgba(150,200,235,0)'],
-    ]);
-    this.shaft = new Sprite(shaft);
-    this.shaft.anchor.set(0.5, 0);
-    this.shaft.width = GW * 0.7;
-    this.shaft.height = (SUBSTRATE_Y - WATERLINE_Y) * 1.2;
-    this.shaft.x = GW * 0.5;
-    this.shaft.y = WATERLINE_Y;
-    this.shaft.blendMode = 'add';
-    L.addChild(this.shaft);
-
-    // Low-contrast pixel texture, closer to the older build's clear aquarium
-    // plane than a soft photographic haze.
+    // Faint water column pixel scatter near the surface (very subtle).
     const pixels = new Graphics();
-    for (let y = WATERLINE_Y + 3; y < SUBSTRATE_Y - 4; y += 4) {
+    for (let y = WATERLINE_Y + 3; y < WATERLINE_Y + 20; y += 4) {
       for (let x = BEZEL_SIDE + ((y >> 2) % 2) * 2; x < GW - BEZEL_SIDE; x += 4) {
-        const nearSurface = 1 - (y - WATERLINE_Y) / Math.max(1, SUBSTRATE_Y - WATERLINE_Y);
-        const alpha = 0.018 + nearSurface * 0.018;
+        const nearSurface = 1 - (y - WATERLINE_Y) / 20;
+        const alpha = 0.012 + nearSurface * 0.010;
         pixels.rect(x, y, 1, 1);
         pixels.fill({ color: 0x9ed2df, alpha });
       }
@@ -134,33 +114,34 @@ export class Atmosphere {
     L.addChild(pixels);
   }
 
-  // ── Substrate (painterly soil) ──────────────────────────────
+  // ── Substrate (painterly aquasoil) ──────────────────────────
   _buildSubstrate() {
     const L = this.layers.substrate;
     const top0 = SUBSTRATE_Y;
-    // Build a gently uneven top profile and reuse it for fill mask + rim.
     const pts = substrateProfile();
 
     const soil = new Container();
-    // Vertical gradient body
+    // Vertical gradient body — dark brown ADA Amazonia tones
     const grad = verticalGradient(GH - top0 + 6, [
-      [0.00, 'rgb(74,56,40)'],
-      [0.28, 'rgb(56,42,30)'],
-      [1.00, 'rgb(26,18,13)'],
+      [0.00, 'rgb(68,50,34)'],
+      [0.22, 'rgb(52,38,24)'],
+      [0.55, 'rgb(34,24,14)'],
+      [1.00, 'rgb(18,12,7)'],
     ]);
     const body = fullSprite(grad, GW, GH - top0 + 6);
     body.y = top0 - 6;
     soil.addChild(body);
 
-    // Grain texture (multiply) for tactile soil
+    // Very subtle grain texture — low opacity so the substrate tile dominates.
+    // Multiply blend + low alpha gives organic variation without a visible grid.
     const grain = new TilingSprite({ texture: grainTile(96, 0.55, true), width: GW, height: GH - top0 + 6 });
     grain.y = top0 - 6;
-    grain.alpha = 0.28;
+    grain.alpha = 0.10;  // reduced from 0.28 — avoids checkerboard artifact at 5× scale
     grain.blendMode = 'multiply';
-    grain.tileScale.set(0.5);
+    grain.tileScale.set(0.38);
     soil.addChild(grain);
 
-    // Mask to the uneven top
+    // Mask to uneven top profile
     const mask = new Graphics();
     mask.moveTo(0, pts[0][1]);
     for (const [x, y] of pts) mask.lineTo(x, y);
@@ -170,112 +151,81 @@ export class Atmosphere {
     soil.mask = mask;
     L.addChild(soil);
 
-    // FMV-processed aquasoil texture tile (48×48 world units per tile).
-    // Bilinear filtered via registry — scales smoothly without pixel blocks.
-    // tileScale 1.0 = one tile covers 48×48 world units (natural grain size).
+    // FMV-processed aquasoil texture tile — dominant visual layer.
+    // Bilinear filtered via registry; tileScale 1.0 = 48 world-unit grain size.
     const substrateTile = this._atlasTiling('substrate_tile', GW, GH - top0 + 8, 1.0);
     substrateTile.y = top0 - 4;
-    substrateTile.alpha = 0.78;   // prominent enough to read as granular aquasoil
+    substrateTile.alpha = 0.82;
     substrateTile.blendMode = 'normal';
     substrateTile.mask = mask;
     L.addChild(substrateTile);
 
-    // Top rim highlight (grains catching light) — follows the same edge.
+    // Top edge: thin warm highlight (grains catching light from above)
     const rim = new Graphics();
-    rim.moveTo(pts[0][0], pts[0][1]);
-    for (const [x, y] of pts) rim.lineTo(x, y);
-    rim.stroke({ width: 1.2, color: 0x9a7e54, alpha: 0.55 });
+    rim.moveTo(pts[0][0], pts[0][1] - 0.5);
+    for (const [x, y] of pts) rim.lineTo(x, y - 0.5);
+    rim.stroke({ width: 0.9, color: 0xa88858, alpha: 0.42 });
     L.addChild(rim);
+
+    // Second darker shadow line just below
     const rim2 = new Graphics();
-    rim2.moveTo(pts[0][0], pts[0][1] + 1.4);
-    for (const [x, y] of pts) rim2.lineTo(x, y + 1.4);
-    rim2.stroke({ width: 1.0, color: 0x2a1d12, alpha: 0.5 });
+    rim2.moveTo(pts[0][0], pts[0][1] + 1.2);
+    for (const [x, y] of pts) rim2.lineTo(x, y + 1.2);
+    rim2.stroke({ width: 0.8, color: 0x1c1208, alpha: 0.55 });
     L.addChild(rim2);
-    // Note: the old procedural gravel rectangles (1–3 px squares drawn at 4 px
-    // intervals) are intentionally removed.  At 5× world scale they upscaled to
-    // 5–15 px blocks that read as pixel-art rather than FMV digitised soil.
-    // The substrate gradient + FMV tile above provides the correct look.
-  }
-
-  _buildSubstrateCap() {
-    const L = this.layers.substrateCap;
-    if (!L) return;
-    const pts = substrateProfile();
-    const cap = new Graphics();
-    cap.moveTo(pts[0][0], pts[0][1] - 0.2);
-    for (const [x, y] of pts) cap.lineTo(x, y - 0.2);
-    for (let i = pts.length - 1; i >= 0; i--) {
-      const [x, y] = pts[i];
-      cap.lineTo(x, y + 5.2);
-    }
-    cap.closePath();
-    cap.fill({ color: 0x21170f, alpha: 0.82 });
-    L.addChild(cap);
-
-    const grain = new TilingSprite({ texture: grainTile(64, 0.62, true), width: GW, height: 8 });
-    grain.y = SUBSTRATE_Y - 3;
-    grain.alpha = 0.28;
-    grain.blendMode = 'multiply';
-    grain.tileScale.set(0.45);
-    L.addChild(grain);
-
-    const rim = new Graphics();
-    rim.moveTo(pts[0][0], pts[0][1] - 0.4);
-    for (const [x, y] of pts) rim.lineTo(x, y - 0.4);
-    rim.stroke({ width: 1.0, color: 0xb29562, alpha: 0.48 });
-    L.addChild(rim);
   }
 
   // ── Caustics ────────────────────────────────────────────────
   _buildCaustics() {
     const L = this.layers.caustics;
-    const top = SUBSTRATE_Y - 12;
+    const top = SUBSTRATE_Y - 14;
     const h = GH - top;
     this.caustic1 = new TilingSprite({ texture: this.art.frame('caustics_tile', 0, 0), width: GW, height: h });
     this.caustic1.y = top;
-    this.caustic1.alpha = 0.16;
+    this.caustic1.alpha = 0.15;
     this.caustic1.blendMode = 'add';
     this.caustic1.tileScale.set(0.64);
     L.addChild(this.caustic1);
 
     this.caustic2 = new TilingSprite({ texture: this.art.frame('caustics_tile', 0, 1), width: GW, height: h });
     this.caustic2.y = top;
-    this.caustic2.alpha = 0.11;
+    this.caustic2.alpha = 0.10;
     this.caustic2.blendMode = 'add';
     this.caustic2.tileScale.set(0.72);
     L.addChild(this.caustic2);
   }
 
-  // ── Volumetric light cone from the LED ──────────────────────
+  // ── Overhead light — flat horizontal wash from LED bar ──────
   _buildLightCone() {
     const L = this.layers.lightCone;
-    const tex = radial(256, [
-      [0, 'rgba(255,250,224,0.5)'],
-      [0.45, 'rgba(230,238,245,0.16)'],
-      [1, 'rgba(210,228,245,0)'],
+    // Real aquarium LED bars spread light as a wide, even horizontal wash —
+    // NOT as a circular spotlight cone. Replace radial point-source with a
+    // full-width top-to-bottom gradient that fades to zero by mid-tank.
+    const tex = verticalGradient(GH, [
+      [0.00, 'rgba(205,232,248,0.13)'],
+      [0.05, 'rgba(180,218,240,0.09)'],
+      [0.18, 'rgba(145,195,225,0.04)'],
+      [0.38, 'rgba(100,160,210,0.01)'],
+      [0.60, 'rgba(0,0,0,0)'],
+      [1.00, 'rgba(0,0,0,0)'],
     ]);
-    const cone = new Sprite(tex);
-    cone.anchor.set(0.5, 0);
-    cone.x = GW * 0.5;
-    cone.y = LED_FIXTURE_Y + 4;
-    cone.width = GW * 0.85;
-    cone.height = (SUBSTRATE_Y - LED_FIXTURE_Y) * 1.05;
-    cone.blendMode = 'add';
-    cone.alpha = 0.5;
-    this.lightCone = cone;
-    L.addChild(cone);
+    this.lightCone = fullSprite(tex, GW - BEZEL_SIDE * 2, GH);
+    this.lightCone.x = BEZEL_SIDE;
+    this.lightCone.y = 0;
+    this.lightCone.blendMode = 'add';
+    this.lightCone.alpha = 1.0;
+    L.addChild(this.lightCone);
   }
 
   // ── Depth haze ──────────────────────────────────────────────
   _buildDepthHaze() {
     const L = this.layers.depthHaze;
-    // Keep the FMV film texture very subtle so it does not read as foreground blobs.
     this.films = this._atlasSprite('background_films', GW, GH, 0.006);
     this.films.blendMode = 'normal';
     L.addChild(this.films);
     const grad = verticalGradient(GH, [
-      [0.0, 'rgba(120,170,190,0.06)'],
-      [0.45, 'rgba(80,130,150,0.025)'],
+      [0.0, 'rgba(120,170,190,0.05)'],
+      [0.45, 'rgba(80,130,150,0.02)'],
       [1.0, 'rgba(30,45,60,0.0)'],
     ]);
     L.addChild(fullSprite(grad, GW, GH));
@@ -286,8 +236,8 @@ export class Atmosphere {
     const L = this.layers.vignette;
     const tex = radial(256, [
       [0.0, 'rgba(0,0,0,0)'],
-      [0.72, 'rgba(0,0,0,0)'],
-      [1.0, 'rgba(0,0,0,0.30)'],
+      [0.68, 'rgba(0,0,0,0)'],
+      [1.0, 'rgba(0,0,0,0.28)'],
     ]);
     const v = new Sprite(tex);
     v.width = GW * 1.1; v.height = GH * 1.25;
@@ -299,111 +249,108 @@ export class Atmosphere {
   // ── Glass front-pane reflections + surface shimmer ──────────
   _buildGlassFX() {
     const L = this.layers.glassFX;
-    // Diagonal reflection streaks (upper-left)
+    // Subtle diagonal reflection streaks (upper-left corner)
     const refl = new Graphics();
     refl.moveTo(BEZEL_SIDE, BEZEL_TOP + 4);
-    refl.lineTo(GW * 0.34, BEZEL_TOP + 4);
-    refl.lineTo(GW * 0.44, BEZEL_TOP + 16);
-    refl.lineTo(BEZEL_SIDE, BEZEL_TOP + 16);
+    refl.lineTo(GW * 0.28, BEZEL_TOP + 4);
+    refl.lineTo(GW * 0.38, BEZEL_TOP + 14);
+    refl.lineTo(BEZEL_SIDE, BEZEL_TOP + 14);
     refl.closePath();
-    refl.fill({ color: 0xbfe0ef, alpha: 0.05 });
-    refl.moveTo(BEZEL_SIDE, BEZEL_TOP + 6);
-    refl.lineTo(GW * 0.16, BEZEL_TOP + 6);
-    refl.lineTo(GW * 0.24, BEZEL_TOP + 12);
-    refl.lineTo(BEZEL_SIDE, BEZEL_TOP + 12);
-    refl.closePath();
-    refl.fill({ color: 0xe6f4ff, alpha: 0.04 });
+    refl.fill({ color: 0xbfe0ef, alpha: 0.04 });
     refl.blendMode = 'add';
     L.addChild(refl);
 
-    // Surface shimmer band near the waterline
+    // Surface shimmer band at waterline
     const shimmerTex = radial(64, [
-      [0, 'rgba(220,240,255,0.5)'],
-      [1, 'rgba(220,240,255,0)'],
+      [0, 'rgba(200,230,255,0.45)'],
+      [1, 'rgba(200,230,255,0)'],
     ]);
-    this.surface = new TilingSprite({ texture: shimmerTex, width: GW, height: 6 });
+    this.surface = new TilingSprite({ texture: shimmerTex, width: GW, height: 5 });
     this.surface.x = BEZEL_SIDE;
     this.surface.width = GW - BEZEL_SIDE * 2;
-    this.surface.y = WATERLINE_Y - 3;
-    this.surface.alpha = 0.16;
+    this.surface.y = WATERLINE_Y - 2;
+    this.surface.alpha = 0.14;
     this.surface.blendMode = 'add';
-    this.surface.tileScale.set(0.12, 0.1);
+    this.surface.tileScale.set(0.10, 0.08);
     L.addChild(this.surface);
 
-    // Thin meniscus line
+    // Thin meniscus line at water surface
     const men = new Graphics();
-    men.rect(BEZEL_SIDE, WATERLINE_Y - 1, GW - BEZEL_SIDE * 2, 0.8);
-    men.fill({ color: 0xeaf6ff, alpha: 0.4 });
+    men.rect(BEZEL_SIDE, WATERLINE_Y - 0.8, GW - BEZEL_SIDE * 2, 0.7);
+    men.fill({ color: 0xe8f5ff, alpha: 0.35 });
     L.addChild(men);
   }
 
   _buildNightTint() {
-    // A cool overlay that fades in at night, above the scene but below framing.
     this.nightTint = fullSprite(Texture.WHITE, GW, GH);
     this.nightTint.tint = 0x06163a;
     this.nightTint.alpha = 0;
     this.layers.glassFX.addChild(this.nightTint);
   }
 
-  // ── Cinematic bezel frame ───────────────────────────────────
+  // ── Tank frame (bezel) ──────────────────────────────────────
   _buildBezel() {
     const L = this.layers.bezel;
     const g = new Graphics();
-    // Outer plastic frame: a thick rounded-rect stroke around the window edge.
     const innerX = BEZEL_SIDE, innerY = BEZEL_TOP;
     const innerW = GW - BEZEL_SIDE * 2, innerH = GH - BEZEL_TOP - BEZEL_BOTTOM;
 
-    // Fill the outer margins with dark plastic via 4 bars (kept crisp).
+    // Dark plastic margins
     g.rect(0, 0, GW, BEZEL_TOP);
     g.rect(0, GH - BEZEL_BOTTOM, GW, BEZEL_BOTTOM);
     g.rect(0, BEZEL_TOP, BEZEL_SIDE, innerH);
     g.rect(GW - BEZEL_SIDE, BEZEL_TOP, BEZEL_SIDE, innerH);
-    g.fill({ color: 0x1c2026 });
+    g.fill({ color: 0x1a1d22 });
 
-    // Hard outer frame — sharp corners for authentic FMV/90s tank aesthetic.
+    // Outer frame edge
     g.rect(0.5, 0.5, GW - 1, GH - 1);
-    g.stroke({ width: 1.2, color: 0x2c333d, alpha: 0.9 });
+    g.stroke({ width: 1.2, color: 0x292f38, alpha: 0.9 });
 
-    // Top edge catch-light
-    g.rect(0, 0, GW, 1.2);
-    g.fill({ color: 0x6a7488, alpha: 0.5 });
+    // Top edge catch-light (frame plastic highlights)
+    g.rect(0, 0, GW, 1.0);
+    g.fill({ color: 0x5a6278, alpha: 0.55 });
 
-    // Inner shadow where bezel meets water (depth)
-    g.rect(innerX, innerY, innerW, 1.2);
-    g.fill({ color: 0x05080c, alpha: 0.6 });
-    g.rect(innerX, innerY + innerH - 1.2, innerW, 1.2);
-    g.fill({ color: 0x05080c, alpha: 0.55 });
-    g.rect(innerX, innerY, 1.2, innerH);
-    g.fill({ color: 0x05080c, alpha: 0.4 });
-    g.rect(innerX + innerW - 1.2, innerY, 1.2, innerH);
-    g.fill({ color: 0x05080c, alpha: 0.4 });
+    // Inner shadow where frame meets glass
+    g.rect(innerX, innerY, innerW, 1.0);
+    g.fill({ color: 0x04070b, alpha: 0.65 });
+    g.rect(innerX, innerY + innerH - 1.0, innerW, 1.0);
+    g.fill({ color: 0x04070b, alpha: 0.55 });
+    g.rect(innerX, innerY, 1.0, innerH);
+    g.fill({ color: 0x04070b, alpha: 0.40 });
+    g.rect(innerX + innerW - 1.0, innerY, 1.0, innerH);
+    g.fill({ color: 0x04070b, alpha: 0.40 });
     L.addChild(g);
   }
 
+  // ── LED fixture bar + horizontal glow ───────────────────────
   _buildLED() {
     const L = this.layers.bezel;
-    const fw = 90, fh = 3.2;
-    const fx = (GW - fw) / 2;
+
+    // Fixture bar spans nearly the full inner tank width.
+    // Real planted-tank LED bars are slim and wide — not small center-mounted units.
+    const fw = GW - BEZEL_SIDE * 2 - 4;  // 268 world units (inner width minus small margin)
+    const fh = 2.8;
+    const fx = BEZEL_SIDE + 2;
     const fy = LED_FIXTURE_Y;
     const led = this._atlasSprite('led_fixture', fw, fh, 1);
     led.x = fx;
     led.y = fy;
     L.addChild(led);
 
-    // Soft glow under the bar
-    const glowTex = radial(128, [
-      [0, 'rgba(245,250,255,0.7)'],
-      [0.5, 'rgba(220,238,255,0.18)'],
-      [1, 'rgba(220,238,255,0)'],
+    // LED glow: a flat horizontal bar gradient fading downward.
+    // Spans the full tank width — simulates even bar-light emission, not a point orb.
+    const glowH = 16;
+    const glowTex = verticalGradient(glowH, [
+      [0.00, 'rgba(228,244,255,0.48)'],
+      [0.28, 'rgba(200,232,255,0.18)'],
+      [0.65, 'rgba(175,218,255,0.05)'],
+      [1.00, 'rgba(175,218,255,0)'],
     ]);
-    this.ledGlow = new Sprite(glowTex);
-    this.ledGlow.anchor.set(0.5, 0.2);
-    this.ledGlow.x = GW / 2;
+    this.ledGlow = fullSprite(glowTex, GW - BEZEL_SIDE * 2, glowH);
+    this.ledGlow.x = BEZEL_SIDE;
     this.ledGlow.y = fy + fh;
-    this.ledGlow.width = fw * 1.5;
-    this.ledGlow.height = 22;
     this.ledGlow.blendMode = 'add';
-    this.ledGlow.alpha = 0.6;
+    this.ledGlow.alpha = 0.75;
     L.addChild(this.ledGlow);
   }
 
@@ -426,15 +373,13 @@ export class Atmosphere {
     this.caustic2.tilePosition.x = -t * 2.6;
     this.caustic2.tilePosition.y = Math.cos(t * 0.18) * 5;
     const pulse = 0.85 + 0.15 * Math.sin(t * 0.7);
-    this.caustic1.alpha = 0.2 * pulse;
+    this.caustic1.alpha = 0.18 * pulse;
 
-    // Light cone + LED breathe
-    this.lightCone.alpha = 0.42 + 0.08 * Math.sin(t * 0.5);
-    this.ledGlow.alpha = 0.55 + 0.06 * Math.sin(t * 0.9);
-    this.shaft.alpha = 0.85 + 0.15 * Math.sin(t * 0.4);
+    // LED glow breathes very gently (real LEDs are stable — minimal flicker)
+    this.ledGlow.alpha = 0.70 + 0.05 * Math.sin(t * 0.6);
 
     // Surface shimmer
-    this.surface.tilePosition.x = t * 6;
+    this.surface.tilePosition.x = t * 5;
     if (this.films) this.films.alpha = state.reviewMode ? 0 : 0.006;
 
     // Day / night
