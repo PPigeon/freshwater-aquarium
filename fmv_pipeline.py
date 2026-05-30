@@ -961,13 +961,27 @@ def process_subject(subject_key, spec, dry_run=False):
         print(f"  [S12] OK {sheet.width}x{sheet.height}px -> {output_path}")
         return processed_frames
 
+    # ── Background room: no rembg — full-scene image, processed as opaque RGB ──
+    if subject_type == 'background':
+        from aquarium_bg_pipeline import fmv_digitize_background
+        source_path = ref_images[0]
+        print(f"  [BG] Full-scene digitization (no background removal): {source_path.name}")
+        src_img = Image.open(source_path).convert('RGB')
+        result_rgb = fmv_digitize_background(src_img)
+        # Convert to RGBA with full alpha for sprite sheet assembly
+        result_rgba = result_rgb.convert('RGBA')
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        result_rgba.save(output_path)
+        print(f"  [BG] OK {result_rgba.width}x{result_rgba.height}px -> {output_path}")
+        return [result_rgba]
+
     # ── Single-reference path (plants, hardscape, fish, single-photo shrimp) ─
     source_path = ref_images[0]
     if subject_type.startswith('hardscape') and len(ref_images) > 1:
         source_path = choose_best_hardscape_reference(ref_images, out_dir, subject_key)
         print(f"  [REF] Selected best-framed hardscape source: {source_path.name}")
 
-    # Stage 1: Background removal
+    # Stage 1: Background removal (sprites only — not backgrounds)
     img_rgba_full = stage1_remove_background(source_path, out_dir, subject_key)
 
     # Apply color variant synthesis for synthesized shrimp variants
