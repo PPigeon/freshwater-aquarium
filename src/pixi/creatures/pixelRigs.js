@@ -59,10 +59,11 @@ export class PixelFishRig {
     this.node.addChild(this.sprite);
     this._lastCol = -1;
     this.phase = Math.random() * Math.PI * 2;
+    this.bobPhase = Math.random() * Math.PI * 2;
     this.update(0);
   }
 
-  update(t, speed = 3) {
+  update(t, speed = 3, turn = 0) {
     const cols = this.art.frameCount('neon_tetra');
     const col = Math.floor(t * (5 + speed * 0.5) + this.phase) % cols;
     if (col !== this._lastCol) {
@@ -70,6 +71,8 @@ export class PixelFishRig {
       sizeSprite(this.sprite, this.art.entry('neon_tetra'));
       this._lastCol = col;
     }
+    this.sprite.y = Math.sin(t * 6 + this.bobPhase) * 0.18;
+    this.sprite.rotation = Math.max(-0.1, Math.min(0.1, turn * 0.035));
   }
 
   destroy() {

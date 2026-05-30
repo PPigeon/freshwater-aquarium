@@ -3,8 +3,8 @@ import { GW, SUBSTRATE_Y, BEZEL_TOP } from '../constants.js';
 import { PixelShrimpRig, PixelFishRig } from './pixelRigs.js';
 
 const FRAME_H = 10;       // shrimp sprite frame height (grid units)
-const FISH_SCALE = 0.82;
-const SCHOOL_SIZE = 16;
+const FISH_SCALE = 0.72;
+const SCHOOL_SIZE = 12;
 
 // Owns all living things: articulated shrimp rigs (keyed by shrimp id), the
 // midwater tetra school (boids ported from the legacy renderer), and shed
@@ -26,6 +26,7 @@ export class CreatureLayer {
     this._buildSchool();
     this._lastTick = null;
     this._targetShift = 0;
+    this._schoolBias = { x: GW * 0.62, y: BEZEL_TOP + 34 };
   }
 
   // ── Tetra school ────────────────────────────────────────────
@@ -34,10 +35,10 @@ export class CreatureLayer {
     this.fish = [];
     for (let i = 0; i < SCHOOL_SIZE; i++) {
       const f = {
-        x: 22 + Math.random() * (GW - 44),
-        y: BEZEL_TOP + 22 + Math.random() * (SUBSTRATE_Y - BEZEL_TOP - 46),
-        vx: (Math.random() < 0.5 ? -1 : 1) * (2.8 + Math.random() * 1.4),
-        vy: (Math.random() - 0.5) * 0.6,
+        x: GW * 0.30 + Math.random() * (GW * 0.46),
+        y: BEZEL_TOP + 24 + Math.random() * 34,
+        vx: (Math.random() < 0.5 ? -1 : 1) * (2.2 + Math.random() * 0.9),
+        vy: (Math.random() - 0.5) * 0.4,
         phase: Math.random() * Math.PI * 2,
         tone: i % 3,
       };
@@ -46,14 +47,14 @@ export class CreatureLayer {
       this.fishC.addChild(rig.node);
       this.fish.push(rig);
     }
-    this.schoolTarget = { x: GW * 0.6, y: BEZEL_TOP + 40 };
+    this.schoolTarget = { x: GW * 0.60, y: BEZEL_TOP + 36 };
   }
 
   _tickSchool(t, dt) {
     if (t - this._targetShift > 5.5) {
       this._targetShift = t;
-      this.schoolTarget.x = 34 + Math.random() * (GW - 68);
-      this.schoolTarget.y = BEZEL_TOP + 20 + Math.random() * (SUBSTRATE_Y - BEZEL_TOP - 44);
+      this.schoolTarget.x = 56 + Math.random() * (GW - 112);
+      this.schoolTarget.y = BEZEL_TOP + 24 + Math.random() * 30;
     }
     const n = this.school.length;
     const cx = this.school.reduce((a, f) => a + f.x, 0) / n;
@@ -64,32 +65,33 @@ export class CreatureLayer {
     for (const f of this.school) {
       f.phase += dt * 1.2;
       let ax = 0, ay = 0;
-      ax += (cx - f.x) * 0.06; ay += (cy - f.y) * 0.04;
-      ax += (avx - f.vx) * 0.22; ay += (avy - f.vy) * 0.22;
-      ax += (this.schoolTarget.x - f.x) * 0.03; ay += (this.schoolTarget.y - f.y) * 0.025;
-      ax += Math.sin(f.phase * 1.9) * 0.08; ay += Math.cos(f.phase * 1.3) * 0.04;
+      ax += (cx - f.x) * 0.11; ay += (cy - f.y) * 0.07;
+      ax += (avx - f.vx) * 0.34; ay += (avy - f.vy) * 0.30;
+      ax += (this.schoolTarget.x - f.x) * 0.05; ay += (this.schoolTarget.y - f.y) * 0.04;
+      ax += Math.sin(f.phase * 1.7) * 0.03; ay += Math.cos(f.phase * 1.1) * 0.02;
       for (const o of this.school) {
         if (o === f) continue;
         const dx = f.x - o.x, dy = f.y - o.y;
         const d2 = dx * dx + dy * dy;
-        if (d2 > 0.0001 && d2 < 120) { ax += (dx / d2) * 12; ay += (dy / d2) * 8; }
+        if (d2 > 0.0001 && d2 < 180) { ax += (dx / d2) * 11; ay += (dy / d2) * 7; }
       }
       f.turn = ax;
-      f.vx += ax * dt * 2.2; f.vy += ay * dt * 2.2;
-      const sp = Math.hypot(f.vx, f.vy), minS = 1.6, maxS = 5.2;
+      f.vx += ax * dt * 2.0; f.vy += ay * dt * 2.0;
+      const sp = Math.hypot(f.vx, f.vy), minS = 1.5, maxS = 4.2;
       if (sp > maxS) { f.vx = (f.vx / sp) * maxS; f.vy = (f.vy / sp) * maxS; }
       else if (sp < minS) { f.vx = (f.vx / (sp || 1)) * minS; f.vy = (f.vy / (sp || 1)) * minS; }
       f.x += f.vx * dt; f.y += f.vy * dt;
       if (f.x < 14) { f.x = 14; f.vx = Math.abs(f.vx) * 0.9; }
       if (f.x > GW - 14) { f.x = GW - 14; f.vx = -Math.abs(f.vx) * 0.9; }
       if (f.y < BEZEL_TOP + 16) { f.y = BEZEL_TOP + 16; f.vy = Math.abs(f.vy) * 0.8; }
-      if (f.y > SUBSTRATE_Y - 18) { f.y = SUBSTRATE_Y - 18; f.vy = -Math.abs(f.vy) * 0.8; }
+      if (f.y > SUBSTRATE_Y - 42) { f.y = SUBSTRATE_Y - 42; f.vy = -Math.abs(f.vy) * 0.8; }
     }
     for (let i = 0; i < this.fish.length; i++) {
       const f = this.school[i], rig = this.fish[i];
       const dir = f.vx >= 0 ? 1 : -1;
       rig.node.x = f.x; rig.node.y = f.y;
       rig.node.scale.set(FISH_SCALE * dir, FISH_SCALE);
+      rig.node.alpha = 0.92;
       rig.update(t, Math.hypot(f.vx, f.vy), f.turn || 0);
     }
   }

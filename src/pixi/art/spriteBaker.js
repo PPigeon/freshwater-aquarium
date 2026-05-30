@@ -731,76 +731,81 @@ function gShrimp(p, bk, row, col, cols, seed) {
 // ── Fish (neon tetra, 40×18 per frame) ──────────────────────────
 function gFish(p, _bk, col, cols, _seed) {
   const w = p.w, h = p.h;
-  const cy = h * 0.52;                         // ~9.4
-  const bodyTop = ramp8(0x53789a, 0x0a1520, 0xe0f8ff);
-  const bodyBot = ramp8(0xd7e4ee, 0x101820, 0xffffff);
-  const x0 = Math.round(w * 0.15);            // ~6  (tail side)
-  const x1 = Math.round(w * 0.78);            // ~31 (head side)
+  const cy = h * 0.52;
+  const bodyTop = ramp8(0x5d7f97, 0x101720, 0xe7f7ff);
+  const bodyBot = ramp8(0xd9e6ee, 0x151c22, 0xffffff);
+  const x0 = Math.round(w * 0.18);
+  const x1 = Math.round(w * 0.76);
   const phase = (col / cols) * Math.PI * 2;
 
   // ── Body fill ──
   for (let x = x0; x <= x1; x++) {
     const t = (x - x0) / (x1 - x0);
-    const peduncle = t > 0.80 ? 1 - (t - 0.80) / 0.20 * 0.42 : 1;
-    const rad = Math.max(1.2, Math.sin(t * Math.PI) * h * 0.36 * peduncle + h * 0.06);
+    const peduncle = t > 0.78 ? 1 - (t - 0.78) / 0.22 * 0.46 : 1;
+    const rad = Math.max(1.1, Math.sin(t * Math.PI) * h * 0.31 * peduncle + h * 0.05);
     for (let dy = -rad; dy <= rad; dy++) {
       const yy = dy / rad;
       const pal = yy < 0 ? bodyTop : bodyBot;
-      const lightT = 0.60 - yy * 0.26;
+      const lightT = 0.58 - yy * 0.24 + (t > 0.40 ? 0.04 : 0);
       shade8(p, x, Math.round(cy + dy), pal, lightT);
     }
+    const dorsalY = Math.round(cy - rad);
+    const ventralY = Math.round(cy + rad);
+    if (dorsalY >= 0 && dorsalY < h) p.set(x, dorsalY, bodyTop[6], 120);
+    if (ventralY >= 0 && ventralY < h) p.set(x, ventralY, bodyBot[1], 90);
   }
 
   // ── Dorsal fin ──
-  const dxS = Math.round(x0 + (x1 - x0) * 0.30);
+  const dxS = Math.round(x0 + (x1 - x0) * 0.34);
   const dxE = Math.round(x0 + (x1 - x0) * 0.56);
   const dxP = Math.round((dxS + dxE) / 2);
-  const dTop = Math.round(cy - h * 0.22 - h * 0.20);
-  const dBase = Math.round(cy - h * 0.22);
-  p.line(dxS, dBase, dxP, dTop, bodyTop[3], 178);
-  p.line(dxP, dTop, dxE, dBase, bodyTop[3], 178);
+  const dTop = Math.round(cy - h * 0.34);
+  const dBase = Math.round(cy - h * 0.18);
+  p.line(dxS, dBase, dxP, dTop, bodyTop[3], 164);
+  p.line(dxP, dTop, dxE, dBase, bodyTop[3], 164);
   for (let dx = dxS + 1; dx < dxE; dx++) {
     const dt = (dx - dxS) / Math.max(1, dxE - dxS);
     const fh = Math.round((dBase - dTop) * Math.sin(dt * Math.PI));
     for (let dy = 0; dy < fh; dy++) {
       const fy = dBase - dy;
-      if (fy >= 0 && fy < h) p.set(dx, fy, bodyTop[2], Math.round(110 * (1 - dy / fh)));
+      if (fy >= 0 && fy < h) p.set(dx, fy, bodyTop[2], Math.round(92 * (1 - dy / fh)));
     }
   }
 
   // ── Pectoral fin ──
-  const pfx = Math.round(x0 + (x1 - x0) * 0.68);
-  p.ellipse(pfx, Math.round(cy + h * 0.06), 3.2, 1.8, bodyTop[4], 155);
+  const pfx = Math.round(x0 + (x1 - x0) * 0.66);
+  p.ellipse(pfx, Math.round(cy + h * 0.04), 2.5, 1.5, bodyTop[4], 132);
 
   // ── Anal fin ──
-  const afx = Math.round(x0 + (x1 - x0) * 0.50);
-  const afY = Math.round(cy + h * 0.22);
-  p.line(afx, afY, afx + 3, Math.round(cy + h * 0.34), bodyBot[3], 148);
-  p.line(afx + 3, Math.round(cy + h * 0.34), afx + 7, afY, bodyBot[3], 148);
+  const afx = Math.round(x0 + (x1 - x0) * 0.48);
+  const afY = Math.round(cy + h * 0.18);
+  p.line(afx, afY, afx + 3, Math.round(cy + h * 0.28), bodyBot[3], 118);
+  p.line(afx + 3, Math.round(cy + h * 0.28), afx + 7, afY, bodyBot[3], 118);
 
   // ── Neon stripes ──
   for (let x = x0; x <= x1; x++) {
     const t = (x - x0) / (x1 - x0);
-    p.set(x, Math.round(cy - h * 0.15), 0x7af0ff, 252);       // cyan top
-    p.set(x, Math.round(cy - h * 0.07), 0x40b0e0, 228);       // blue bottom
-    p.set(x, Math.round(cy - h * 0.01), 0x1a2a1a, 190);       // dark stripe
-    if (t > 0.44) {
-      const ra = Math.min(240, Math.round((t - 0.44) / 0.56 * 255));
-      p.set(x, Math.round(cy + h * 0.10), 0xe03030, ra);
-      p.set(x, Math.round(cy + h * 0.17), 0xb02020, Math.round(ra * 0.65));
+    const blueA = t < 0.22 ? Math.round(130 + t * 240) : 235;
+    p.set(x, Math.round(cy - h * 0.14), 0x8cf7ff, blueA);
+    p.set(x, Math.round(cy - h * 0.08), 0x37a7e8, Math.round(blueA * 0.86));
+    p.set(x, Math.round(cy - h * 0.02), 0x15212d, 160);
+    if (t > 0.46) {
+      const ra = Math.min(228, Math.round((t - 0.46) / 0.54 * 255));
+      p.set(x, Math.round(cy + h * 0.08), 0xf05a42, ra);
+      p.set(x, Math.round(cy + h * 0.14), 0xb62c26, Math.round(ra * 0.72));
     }
   }
 
   // ── Eye ──
-  const ex = x1 - 2, ey = Math.round(cy - h * 0.15);
+  const ex = x1 - 2, ey = Math.round(cy - h * 0.16);
   p.ellipse(ex, ey, 2.1, 2.0, 0x080808, 255);
-  p.ellipse(ex, ey, 1.2, 1.0, 0xa07030, 115);                 // golden iris
+  p.ellipse(ex, ey, 1.2, 1.0, 0xb07f38, 135);
   p.set(ex - 1, ey - 1, 0xffffff, 232);
 
   // ── Tail (forked caudal fin) ──
-  const pedX = x0 + Math.round((x1 - x0) * 0.06);
-  const flick = Math.sin(phase) * h * 0.20;
-  const tailTip = x0 - Math.round(w * 0.08);
+  const pedX = x0 + Math.round((x1 - x0) * 0.08);
+  const flick = Math.sin(phase) * h * 0.16;
+  const tailTip = x0 - Math.round(w * 0.10);
   for (let k = 1; k <= 4; k++) {
     const ty = cy - h * 0.04 - k * h * 0.065 + flick * (k / 4);
     p.line(pedX, Math.round(cy - h * 0.04), Math.max(0, tailTip), Math.round(ty), bodyTop[3], 200);
@@ -809,6 +814,7 @@ function gFish(p, _bk, col, cols, _seed) {
     const ty = cy + h * 0.04 + k * h * 0.065 + flick * (k / 4) * 0.55;
     p.line(pedX, Math.round(cy + h * 0.04), Math.max(0, tailTip), Math.round(ty), bodyBot[3], 200);
   }
+  p.line(pedX + 1, Math.round(cy - h * 0.08), pedX + 1, Math.round(cy + h * 0.08), 0x1d2f4a, 140);
 
   p.outline(OUTLINE);
 }
