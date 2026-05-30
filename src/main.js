@@ -4,7 +4,7 @@ import { initShrimp } from './shrimp.js';
 import { ASSET_DEFS } from './pixi/assetDefs.js';
 import { SUBSTRATE_Y, WATERLINE_Y } from './pixi/constants.js';
 import { PixiStage } from './pixi/stage.js';
-import { SCAPE_PRESETS, clonePresetAssets } from './scapes.js';
+import { SCAPE_PRESETS, REVIEW_URLS, clonePresetAssets } from './scapes.js';
 
 const CANVAS_W = 280;
 const CANVAS_H = 156;
@@ -16,6 +16,9 @@ const LIGHTING_KEY = 'aquarium_lighting_v1';
 const LIGHTING_SETTINGS_KEY = 'aquarium_lighting_settings_v1';
 const BACKGROUND_KEY = 'aquarium_background_v1';
 const TOOLBOX_COLLAPSED_KEY = 'aquarium_toolbox_collapsed_v1';
+const REVIEW_PARAMS = new URLSearchParams(window.location.search);
+const REVIEW_PRESET = REVIEW_PARAMS.get('review');
+const REVIEW_MODE = !!(REVIEW_PRESET && SCAPE_PRESETS[REVIEW_PRESET]);
 // Legacy fallback array kept inline for safety if scapes.js fails to import.
 // In normal operation, placedAssets is populated from a SCAPE_PRESETS preset.
 const DEFAULT_ASSETS = [
@@ -48,9 +51,9 @@ const placedAssets = loadPlacedAssets();
 let activeTool = 'food';
 let activeWorkspace = 'scene';
 let switchWorkspace = () => {};
-let lightingMode = localStorage.getItem(LIGHTING_KEY) || 'daylight';
+let lightingMode = REVIEW_PARAMS.get('lighting') || localStorage.getItem(LIGHTING_KEY) || 'daylight';
 if (lightingMode !== 'daylight' && lightingMode !== 'night') lightingMode = 'daylight';
-let backgroundMode = localStorage.getItem(BACKGROUND_KEY) || 'frosted';
+let backgroundMode = REVIEW_PARAMS.get('background') || localStorage.getItem(BACKGROUND_KEY) || 'frosted';
 const lightingSettings = loadLightingSettings();
 let selectedAssetId = null;
 let dragState = null;
@@ -78,7 +81,35 @@ const ASSET_KEY_MIGRATIONS = {
 const PRESET_ID_MIGRATIONS = {
   jungle: 'nature',
   empty: 'iwagumi',
+  hd2d_slice: 'fmv_slice',
 };
+
+function seededRandom(seedText) {
+  let h = 1779033703 ^ seedText.length;
+  for (let i = 0; i < seedText.length; i++) {
+    h = Math.imul(h ^ seedText.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  return () => {
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    const t = (h ^= h >>> 16) >>> 0;
+    return t / 4294967296;
+  };
+}
+
+function installReviewSeed() {
+  const seed = REVIEW_PARAMS.get('seed');
+  if (!seed) return;
+  Math.random = seededRandom(seed);
+}
+
+function applyReviewPreset() {
+  if (!REVIEW_MODE) return;
+  placedAssets.splice(0, placedAssets.length, ...clonePresetAssets(REVIEW_PRESET));
+  selectedAssetId = null;
+  activeScapeId = `review_${REVIEW_PRESET}`;
+}
 
 function normalizeAsset(asset) {
   return {
@@ -863,12 +894,14 @@ function buildToolbox(assets) {
 
   const toolbox = document.getElementById('toolbox');
   const toggle = document.getElementById('toolbox-toggle');
-  const setCollapsed = (collapsed) => {
+  const setCollapsed = (collapsed, { persist = true } = {}) => {
     toolbox.classList.toggle('collapsed', collapsed);
     if (toggle) toggle.textContent = collapsed ? 'Edit Tank' : 'Close Editor';
-    try {
-      localStorage.setItem(TOOLBOX_COLLAPSED_KEY, collapsed ? '1' : '0');
-    } catch {}
+    if (persist) {
+      try {
+        localStorage.setItem(TOOLBOX_COLLAPSED_KEY, collapsed ? '1' : '0');
+      } catch {}
+    }
   };
   // Default to COLLAPSED — the tank is the primary experience, editing is a deliberate mode.
   // (Only override if the user has previously left it open.)
@@ -878,6 +911,9 @@ function buildToolbox(assets) {
     if (stored !== null) collapsedByDefault = stored === '1';
   } catch {}
   setCollapsed(collapsedByDefault);
+  if (REVIEW_PARAMS.has('editor')) {
+    setCollapsed(REVIEW_PARAMS.get('editor') === '0', { persist: false });
+  }
   toggle?.addEventListener('click', () => setCollapsed(!toolbox.classList.contains('collapsed')));
 
   // Escape closes the editor when expanded
@@ -1131,19 +1167,30 @@ function setupInput(canvas, stage) {
 
 // ─── Main ─────────────────────────────────────────────────────
 async function main() {
+  installReviewSeed();
   const canvas = document.getElementById('tank');
   const stage  = new PixiStage();
   await stage.init(canvas);
 
   const assets = await loadAssets();   // PNGs only feed the toolbox thumbnails
+  applyReviewPreset();
   sanitizePlacedAssets();
-  savePlacedAssets();
+  if (!REVIEW_MODE) savePlacedAssets();
   buildToolbox(assets);
   updateInspector();
   stage.setScape(placedAssets);        // placedView reconciles this array live
+  if (REVIEW_MODE) {
+    const zoom = Number(REVIEW_PARAMS.get('zoom') || '1');
+    const panX = Number(REVIEW_PARAMS.get('panX') || '0');
+    const panY = Number(REVIEW_PARAMS.get('panY') || '0');
+    if (Number.isFinite(zoom) && zoom > 0) stage.zoom = zoom;
+    if (Number.isFinite(panX)) stage.pan.x = panX;
+    if (Number.isFinite(panY)) stage.pan.y = panY;
+    stage.layout();
+  }
 
   // First-time onboarding: if no scape has been chosen, show the picker.
-  if (!localStorage.getItem(SCAPE_KEY) && placedAssets.length === 0) {
+  if (!REVIEW_MODE && !localStorage.getItem(SCAPE_KEY) && placedAssets.length === 0) {
     showScapePicker(false);
   }
 
@@ -1151,6 +1198,17 @@ async function main() {
   let shrimp  = initShrimp(sim.population, CANVAS_W, SUBSTRATE_Y, SUBSTRATE_Y);
 
   setupInput(canvas, stage);
+  if (typeof window !== 'undefined') {
+    window.__review = {
+      mode: REVIEW_MODE,
+      preset: REVIEW_PRESET,
+      urls: REVIEW_URLS,
+      lightingMode,
+      backgroundMode,
+      assetCount: placedAssets.length,
+      ready: false,
+    };
+  }
 
   // Fixed-timestep accumulator: simulation steps at a stable 60 Hz regardless
   // of frame rate, so motion never stutters when the tab is busy. Rendering
@@ -1202,6 +1260,12 @@ async function main() {
       compositionOverlays,
       invalidAssetIds: [...invalidAssetIds],
     });
+    if (window.__review) {
+      window.__review.ready = true;
+      window.__review.lightingMode = lightingMode;
+      window.__review.backgroundMode = backgroundMode;
+      window.__review.assetCount = placedAssets.length;
+    }
     updatePerfHUD();
 
     saveTimer += frameDt;

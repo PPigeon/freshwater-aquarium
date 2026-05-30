@@ -28,7 +28,6 @@ const SPRITE_PATHS = {
   // plants
   rotala:    'assets/sprites/plants/rotala.png',
   java_fern: 'assets/sprites/plants/java_fern.png',
-  carpet:    'assets/sprites/plants/carpet.png',
   anubias:   'assets/sprites/plants/anubias.png',
   crypt:      'assets/sprites/plants/crypt.png',
   vallisneria:'assets/sprites/plants/vallisneria.png',

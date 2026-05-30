@@ -134,6 +134,8 @@ const BACKGROUND = {
     worldSize: { w: 8, h: 8 },
     frameGrid: { rows: 1, cols: 1, frameW: 8, frameH: 8 },
     animTags: { tileable: true },
+    filter: 'linear',
+    reviewRole: 'background',
   }),
   substrate_tile: withContract({
     key: 'substrate_tile',
@@ -143,6 +145,7 @@ const BACKGROUND = {
     worldSize: { w: 48, h: 48 },
     frameGrid: { rows: 1, cols: 1, frameW: 48, frameH: 48 },
     animTags: { tileable: true },
+    reviewRole: 'background',
   }),
   caustics_tile: withContract({
     key: 'caustics_tile',
@@ -152,6 +155,8 @@ const BACKGROUND = {
     worldSize: { w: 32, h: 32 },
     frameGrid: { rows: 1, cols: 4, frameW: 32, frameH: 32 },
     animTags: { tileable: true, animated: true },
+    filter: 'linear',
+    reviewRole: 'background',
   }),
   background_films: withContract({
     key: 'background_films',
@@ -162,6 +167,8 @@ const BACKGROUND = {
     frameGrid: { rows: 1, cols: 1, frameW: 280, frameH: 156 },
     sourceRect: { x: 0, y: 0, w: 280, h: 156 },
     animTags: { overlay: true },
+    filter: 'linear',
+    reviewRole: 'background',
   }),
   room_bg: withContract({
     key: 'room_bg',
@@ -172,6 +179,8 @@ const BACKGROUND = {
     frameGrid: { rows: 1, cols: 1, frameW: 280, frameH: 156 },
     sourceRect: { x: 0, y: 0, w: 280, h: 156 },
     animTags: { overlay: true },
+    filter: 'linear',
+    reviewRole: 'background',
   }),
   led_fixture: withContract({
     key: 'led_fixture',
@@ -181,6 +190,7 @@ const BACKGROUND = {
     worldSize: { w: 90, h: 3.2 },
     frameGrid: { rows: 1, cols: 1, frameW: 240, frameH: 8 },
     animTags: { overlay: true },
+    reviewRole: 'background',
   }),
 };
 

@@ -56,6 +56,9 @@ function validateManifestEntry(entry, key) {
   }
   if (!entry.frameGrid) problems.push('Missing required `frameGrid`.');
   if (!entry.worldSize) problems.push('Missing required `worldSize`.');
+  if (entry.filter && entry.filter !== 'nearest' && entry.filter !== 'linear') {
+    problems.push(`Invalid filter ${JSON.stringify(entry.filter)}. Use "nearest" or "linear".`);
+  }
   if (!Array.isArray(entry.anchor) || entry.anchor.length !== 2) {
     problems.push('Missing required `anchor` array [x, y].');
   } else if (entry.anchor[0] < 0 || entry.anchor[0] > 1 || entry.anchor[1] < 0 || entry.anchor[1] > 1) {
@@ -141,10 +144,8 @@ function frameTexture(image, frame, nearest = true) {
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(image, frame.x, frame.y, frame.w, frame.h, 0, 0, frame.w, frame.h);
   const tex = Texture.from(c);
-  // Background-layer fill textures (water tile, substrate, caustics, etc.) use
-  // bilinear filtering so they upscale smoothly without the large pixel-block
-  // artefacts that nearest-neighbour creates at 5× world scale.  Creature sprites
-  // and hardscape/plant art keep nearest so their pixel silhouettes stay crisp.
+  // Atlas art is nearest by default. A small number of full-tank overlays may
+  // opt into linear filtering in the manifest when their role is atmospheric.
   return nearest ? setNearest(tex) : tex;
 }
 
@@ -165,9 +166,8 @@ async function loadEntry(raw) {
   pctx.drawImage(image, 0, 0);
   checkAlphaEdges(entry, pctx.getImageData(0, 0, image.width, image.height).data, image.width, image.height);
 
-  // Background-layer entries upscale smoothly with bilinear; everything else
-  // (creatures, plants, hardscape) uses nearest for crisp pixel silhouettes.
-  const useNearest = entry.layer !== 'background';
+  // Nearest is the default; manifest entries must explicitly opt into linear.
+  const useNearest = entry.filter !== 'linear';
 
   if (entry.sourceRect) {
     const r = entry.sourceRect;

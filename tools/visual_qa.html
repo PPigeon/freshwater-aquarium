@@ -1,0 +1,232 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Aquarium Visual QA</title>
+<style>
+  body {
+    margin: 0;
+    background: #101014;
+    color: #d8d8d0;
+    font: 12px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+  }
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #18181e;
+    border-bottom: 1px solid #303038;
+    padding: 12px 16px;
+  }
+  h1, h2 { margin: 0 0 8px; font-size: 14px; }
+  main { padding: 16px; }
+  section { margin: 0 0 24px; }
+  canvas {
+    display: block;
+    max-width: 100%;
+    image-rendering: pixelated;
+    border: 1px solid #303038;
+    background: #111116;
+  }
+  .summary { color: #9fa; }
+  .warn { color: #ffb070; }
+  pre {
+    white-space: pre-wrap;
+    background: #18181e;
+    border: 1px solid #303038;
+    padding: 12px;
+  }
+</style>
+<header>
+  <h1>Aquarium Visual QA</h1>
+  <div id="status">Loading committed atlas PNGs...</div>
+</header>
+<main id="app"></main>
+<script type="module">
+const ROOT = '../assets/sprites/';
+const GROUPS = {
+  shrimp: [
+    'red_cherry_male.png', 'red_cherry_female.png', 'red_cherry_berried.png',
+    'rili_male.png', 'rili_female.png',
+    'blue_dream_male.png', 'blue_dream_female.png',
+    'blue_rili_male.png', 'blue_rili_female.png',
+    'yellow_fire_male.png', 'yellow_fire_female.png',
+    'orange_pumpkin_male.png', 'orange_pumpkin_female.png',
+    'snowball_male.png', 'snowball_female.png',
+    'black_rose_male.png', 'black_rose_female.png',
+    'green_jade_male.png', 'green_jade_female.png',
+    'carbon_rili_male.png', 'carbon_rili_female.png',
+  ],
+  fish: ['background/neon_tetra.png'],
+  hardscape: [
+    'hardscape/wood_spider.png', 'hardscape/wood_manzanita.png',
+    'hardscape/wood_malaysian.png', 'hardscape/wood_mopani.png',
+    'hardscape/wood_redmoor.png', 'hardscape/stone_seiryu_lg.png',
+    'hardscape/stone_seiryu_sm.png', 'hardscape/stone_dragon.png',
+    'hardscape/stone_lava.png', 'hardscape/stone_frodo.png',
+    'hardscape/stone_pagoda.png',
+  ],
+  plants: [
+    'plants/rotala.png', 'plants/java_fern.png', 'plants/anubias.png',
+    'plants/crypt.png', 'plants/vallisneria.png', 'plants/moss.png',
+    'plants/buce.png', 'plants/floating_salvinia.png',
+    'plants/floating_redroot.png',
+  ],
+  background: [
+    'background/water_tile.png', 'background/substrate.png',
+    'background/caustics.png', 'background/background_films.png',
+    'background/room_bg.png', 'background/led_fixture.png',
+  ],
+  particles: [
+    'molt.png', 'background/bubble.png', 'background/food_wafer.png',
+    'background/mote.png',
+  ],
+};
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(`Failed to load ${src}`));
+    img.src = src;
+  });
+}
+
+function imageData(img) {
+  const c = document.createElement('canvas');
+  c.width = img.naturalWidth;
+  c.height = img.naturalHeight;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, 0, 0);
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
+function transparentEdgeRgb(data, w, h) {
+  let count = 0;
+  const at = (x, y, c) => data[(y * w + x) * 4 + c];
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      if (at(x, y, 3) !== 0) continue;
+      if (at(x, y, 0) === 0 && at(x, y, 1) === 0 && at(x, y, 2) === 0) continue;
+      if (at(x - 1, y, 3) || at(x + 1, y, 3) || at(x, y - 1, 3) || at(x, y + 1, 3)) {
+        count++;
+      }
+    }
+  }
+  return count;
+}
+
+function analyze(path, group, img) {
+  const { data, width: w, height: h } = imageData(img);
+  let opaque = 0;
+  let minX = w, minY = h, maxX = 0, maxY = 0;
+  let sum = 0, sumSq = 0;
+  const colors = new Set();
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      const a = data[i + 3];
+      if (!a) continue;
+      opaque++;
+      minX = Math.min(minX, x); minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+      const l = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+      sum += l; sumSq += l * l;
+      colors.add(`${data[i]},${data[i + 1]},${data[i + 2]}`);
+    }
+  }
+  const area = Math.max(1, w * h);
+  const bboxArea = opaque ? Math.max(1, (maxX - minX + 1) * (maxY - minY + 1)) : 1;
+  const contrast = opaque ? Math.sqrt(Math.max(0, sumSq / opaque - (sum / opaque) ** 2)) : 0;
+  const warnings = [];
+  const opaqueRatio = opaque / area;
+  const bboxFill = opaque / bboxArea;
+  const bleed = transparentEdgeRgb(data, w, h);
+  if (group !== 'background' && opaqueRatio < 0.015) warnings.push('tiny-silhouette');
+  if (group !== 'background' && bboxFill < 0.10) warnings.push('wispy-or-sparse-bbox');
+  if (bleed > 6) warnings.push('transparent-edge-rgb');
+  if ((group === 'shrimp' || group === 'fish') && contrast < 18) warnings.push('low-creature-contrast');
+  if ((group === 'hardscape' || group === 'plants') && colors.size > 512) warnings.push('palette-may-read-photographic');
+  return {
+    group,
+    path,
+    width: w,
+    height: h,
+    opaqueRatio: +opaqueRatio.toFixed(4),
+    bboxFill: +bboxFill.toFixed(4),
+    transparentEdgeRgb: bleed,
+    contrast: +contrast.toFixed(2),
+    colorCount: colors.size,
+    warnings,
+  };
+}
+
+function drawSheet(group, assets) {
+  const cols = group === 'hardscape' || group === 'plants' ? 3 : 4;
+  const cellW = 220, cellH = 150;
+  const rows = Math.ceil(assets.length / cols);
+  const c = document.createElement('canvas');
+  c.width = cols * cellW;
+  c.height = rows * cellH;
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = '#111116';
+  ctx.fillRect(0, 0, c.width, c.height);
+  ctx.font = '10px Consolas, monospace';
+  for (let i = 0; i < assets.length; i++) {
+    const { img, report } = assets[i];
+    const x = (i % cols) * cellW;
+    const y = Math.floor(i / cols) * cellH;
+    ctx.strokeStyle = '#303038';
+    ctx.strokeRect(x, y, cellW, cellH);
+    const maxW = cellW - 24, maxH = cellH - 44;
+    const scale = Math.max(1, Math.floor(Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight)));
+    const w = img.naturalWidth * scale, h = img.naturalHeight * scale;
+    const px = x + Math.floor((cellW - w) / 2);
+    const py = y + 10;
+    for (let yy = 0; yy < h; yy += 8) {
+      for (let xx = 0; xx < w; xx += 8) {
+        ctx.fillStyle = ((xx + yy) / 8) % 2 ? '#202026' : '#303038';
+        ctx.fillRect(px + xx, py + yy, 8, 8);
+      }
+    }
+    ctx.drawImage(img, px, py, w, h);
+    ctx.fillStyle = '#d0d0c8';
+    ctx.fillText(report.path.split('/').pop().slice(0, 28), x + 8, y + cellH - 28);
+    ctx.fillStyle = report.warnings.length ? '#ffb070' : '#72ff9a';
+    ctx.fillText((report.warnings.join(',') || 'ok').slice(0, 35), x + 8, y + cellH - 12);
+  }
+  return c;
+}
+
+async function run() {
+  const app = document.getElementById('app');
+  const allReports = [];
+  for (const [group, paths] of Object.entries(GROUPS)) {
+    const loaded = [];
+    for (const path of paths) {
+      try {
+        const img = await loadImage(ROOT + path);
+        const report = analyze(path, group, img);
+        loaded.push({ img, report });
+        allReports.push(report);
+      } catch (err) {
+        allReports.push({ group, path, warnings: [String(err)] });
+      }
+    }
+    const flagged = loaded.filter(a => a.report.warnings.length).length;
+    const section = document.createElement('section');
+    section.innerHTML = `<h2>${group}</h2><div class="${flagged ? 'warn' : 'summary'}">${loaded.length} assets, ${flagged} flagged</div>`;
+    section.appendChild(drawSheet(group, loaded));
+    app.appendChild(section);
+  }
+  const pre = document.createElement('pre');
+  pre.textContent = JSON.stringify(allReports, null, 2);
+  app.appendChild(pre);
+  document.getElementById('status').textContent = 'Visual QA complete';
+}
+
+run().catch((err) => {
+  document.getElementById('status').textContent = err.message;
+  document.getElementById('status').className = 'warn';
+});
+</script>

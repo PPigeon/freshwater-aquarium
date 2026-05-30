@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "visual:qa": "echo Open /tools/visual_qa.html from the local dev server",
+    "visual:qa:python": "python tools/visual_qa.py",
+    "review:urls": "node tools/review_urls.mjs"
   },
   "devDependencies": {
     "vite": "^5.0.0"
