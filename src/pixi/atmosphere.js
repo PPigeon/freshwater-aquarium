@@ -16,6 +16,18 @@ const BG_COLORS = {
   riverbank: 0x163029,
 };
 
+function substrateProfile() {
+  const pts = [];
+  for (let x = 0; x <= GW; x += 4) {
+    const y = SUBSTRATE_Y
+      + Math.sin(x * 0.10) * 1.2
+      + Math.sin(x * 0.031 + 1.7) * 1.6
+      - 1.2;
+    pts.push([x, y]);
+  }
+  return pts;
+}
+
 function fullSprite(tex, w, h) {
   const s = new Sprite(tex);
   s.width = w; s.height = h;
@@ -30,6 +42,7 @@ export class Atmosphere {
     this._bgMode = null;
     this._buildWater();
     this._buildSubstrate();
+    this._buildSubstrateCap();
     this._buildCaustics();
     this._buildLightCone();
     this._buildDepthHaze();
@@ -127,14 +140,7 @@ export class Atmosphere {
     const L = this.layers.substrate;
     const top0 = SUBSTRATE_Y;
     // Build a gently uneven top profile and reuse it for fill mask + rim.
-    const pts = [];
-    for (let x = 0; x <= GW; x += 4) {
-      const y = top0
-        + Math.sin(x * 0.10) * 1.2
-        + Math.sin(x * 0.031 + 1.7) * 1.6
-        - 1.2;
-      pts.push([x, y]);
-    }
+    const pts = substrateProfile();
 
     const soil = new Container();
     // Vertical gradient body
@@ -190,6 +196,35 @@ export class Atmosphere {
     // intervals) are intentionally removed.  At 5× world scale they upscaled to
     // 5–15 px blocks that read as pixel-art rather than FMV digitised soil.
     // The substrate gradient + FMV tile above provides the correct look.
+  }
+
+  _buildSubstrateCap() {
+    const L = this.layers.substrateCap;
+    if (!L) return;
+    const pts = substrateProfile();
+    const cap = new Graphics();
+    cap.moveTo(pts[0][0], pts[0][1] - 0.2);
+    for (const [x, y] of pts) cap.lineTo(x, y - 0.2);
+    for (let i = pts.length - 1; i >= 0; i--) {
+      const [x, y] = pts[i];
+      cap.lineTo(x, y + 5.2);
+    }
+    cap.closePath();
+    cap.fill({ color: 0x21170f, alpha: 0.82 });
+    L.addChild(cap);
+
+    const grain = new TilingSprite({ texture: grainTile(64, 0.62, true), width: GW, height: 8 });
+    grain.y = SUBSTRATE_Y - 3;
+    grain.alpha = 0.28;
+    grain.blendMode = 'multiply';
+    grain.tileScale.set(0.45);
+    L.addChild(grain);
+
+    const rim = new Graphics();
+    rim.moveTo(pts[0][0], pts[0][1] - 0.4);
+    for (const [x, y] of pts) rim.lineTo(x, y - 0.4);
+    rim.stroke({ width: 1.0, color: 0xb29562, alpha: 0.48 });
+    L.addChild(rim);
   }
 
   // ── Caustics ────────────────────────────────────────────────

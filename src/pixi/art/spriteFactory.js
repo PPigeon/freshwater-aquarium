@@ -5,9 +5,15 @@ const FLOATING = new Set(['floating_salvinia', 'floating_redroot']);
 
 function makeSprite(art, key) {
   const entry = art.entry(key);
-  const sprite = new Sprite(art.frame(key, 0, 0));
+  const texture = art.frame(key, 0, 0);
+  const sprite = new Sprite(texture);
   if (entry) {
-    sprite.anchor.set(entry.anchor?.[0] ?? 0.5, entry.anchor?.[1] ?? 1);
+    const ax = entry.anchor?.[0] ?? 0.5;
+    const authoredY = entry.anchor?.[1] ?? 1;
+    const ay = FLOATING.has(key)
+      ? authoredY
+      : (texture.visualBounds?.bottomNorm ?? authoredY);
+    sprite.anchor.set(ax, ay);
     sprite.width = entry.worldW;
     sprite.height = entry.worldH;
   }

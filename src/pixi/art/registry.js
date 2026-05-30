@@ -1,5 +1,5 @@
 import { Texture } from 'pixi.js';
-import { MANIFEST } from './manifest.js';
+import { MANIFEST } from './manifest.js?v=18';
 import { bakeSheet } from './spriteBaker.js';
 
 function toAbs(path) {
@@ -136,6 +136,34 @@ function checkAlphaEdges(entry, imageData, w, h) {
   }
 }
 
+function alphaBounds(ctx, w, h) {
+  const data = ctx.getImageData(0, 0, w, h).data;
+  let left = w;
+  let right = -1;
+  let top = h;
+  let bottom = -1;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const a = data[(y * w + x) * 4 + 3];
+      if (a < 12) continue;
+      if (x < left) left = x;
+      if (x > right) right = x;
+      if (y < top) top = y;
+      if (y > bottom) bottom = y;
+    }
+  }
+  if (right < left || bottom < top) {
+    return { left: 0, right: w - 1, top: 0, bottom: h - 1, bottomNorm: 1 };
+  }
+  return {
+    left,
+    right,
+    top,
+    bottom,
+    bottomNorm: Math.min(1, Math.max(0, (bottom + 1) / h)),
+  };
+}
+
 function frameTexture(image, frame, nearest = true) {
   const c = document.createElement('canvas');
   c.width = frame.w;
@@ -144,6 +172,7 @@ function frameTexture(image, frame, nearest = true) {
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(image, frame.x, frame.y, frame.w, frame.h, 0, 0, frame.w, frame.h);
   const tex = Texture.from(c);
+  tex.visualBounds = alphaBounds(ctx, frame.w, frame.h);
   // Atlas art is nearest by default. A small number of full-tank overlays may
   // opt into linear filtering in the manifest when their role is atmospheric.
   return nearest ? setNearest(tex) : tex;

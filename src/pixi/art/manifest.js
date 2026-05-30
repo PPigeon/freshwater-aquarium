@@ -1,5 +1,5 @@
-import { ASSET_DEFS } from '../assetDefs.js';
-import { VARIANT_COLORS } from '../../assets.js';
+import { ASSET_DEFS } from '../assetDefs.js?v=18';
+import { VARIANT_COLORS } from '../../assets.js?v=18';
 
 const hex = (s) => parseInt(s.replace('#', ''), 16);
 

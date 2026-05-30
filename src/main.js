@@ -1,10 +1,10 @@
 import { loadAssets, VARIANT_COLORS } from './assets.js';
 import { Simulation } from './simulation.js';
 import { initShrimp } from './shrimp.js';
-import { ASSET_DEFS } from './pixi/assetDefs.js?v=17';
+import { ASSET_DEFS } from './pixi/assetDefs.js?v=18';
 import { SUBSTRATE_Y, WATERLINE_Y } from './pixi/constants.js';
-import { PixiStage } from './pixi/stage.js?v=17';
-import { SCAPE_PRESETS, REVIEW_URLS, clonePresetAssets } from './scapes.js?v=17';
+import { PixiStage } from './pixi/stage.js?v=18';
+import { SCAPE_PRESETS, REVIEW_URLS, clonePresetAssets } from './scapes.js?v=18';
 
 const CANVAS_W = 280;
 const CANVAS_H = 156;
@@ -1246,6 +1246,7 @@ async function main() {
 
     stage.frame({
       time: now / 1000,
+      reviewMode: REVIEW_MODE,
       nightOpacity: lightingMode === 'night' ? 0.46 : nightOpacity(),
       shrimp,
       plantStages: sim.plantStages,

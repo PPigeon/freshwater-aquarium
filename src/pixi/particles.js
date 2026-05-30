@@ -132,7 +132,15 @@ export class ParticleLayer {
     if (this._last === null) this._last = t;
     const dt = Math.max(0, Math.min(0.1, t - this._last));
     this._last = t;
+    const reviewMode = !!state.reviewMode;
+    this.driftC.alpha = reviewMode ? 0.32 : 1;
     this._updateDrift(t, dt);
+    if (reviewMode) {
+      this.pearls.length = 0;
+      this._renderBubbles([]);
+      this._renderFood([]);
+      return;
+    }
     this._updatePearls(t, dt);
     this._renderBubbles(state.bubbles);
     this._renderFood(state.foodParticles);
