@@ -97,6 +97,9 @@ export const SCAPE_PRESETS = {
     blurb: 'Heavily planted studio scape with filled verticals, tucked bases, and readable cherry shrimp lanes.',
     reviewOnly: true,
     assets: [
+      { id: 'dense_wall_l0', key: 'stem_wall_lush', x: 42, y: Y, scale: 0.96, rotation: 0, flip: false, depth: 'back' },
+      { id: 'dense_wall_c0', key: 'stem_wall_bronze', x: 142, y: Y, scale: 0.94, rotation: 0, flip: true, depth: 'back' },
+      { id: 'dense_wall_r0', key: 'stem_wall_lush', x: 228, y: Y, scale: 0.98, rotation: 0, flip: true, depth: 'back' },
       { id: 'dense_rot_l0', key: 'vallisneria', x: 12, y: Y, scale: 1.10, rotation: 0, flip: false, depth: 'back' },
       { id: 'dense_rot_l1', key: 'vallisneria', x: 26, y: Y, scale: 1.06, rotation: 0, flip: true, depth: 'back' },
       { id: 'dense_rot_l2', key: 'crypt', x: 40, y: Y, scale: 0.98, rotation: 0, flip: false, depth: 'back' },
@@ -135,6 +138,8 @@ export const SCAPE_PRESETS = {
     blurb: 'Close fauna lane framed by dense planting, clean substrate contact, and low artifact pressure.',
     reviewOnly: true,
     assets: [
+      { id: 'fauna_wall_l', key: 'stem_wall_lush', x: 74, y: Y, scale: 0.92, rotation: 0, flip: false, depth: 'back' },
+      { id: 'fauna_wall_r', key: 'stem_wall_bronze', x: 204, y: Y, scale: 0.88, rotation: 0, flip: true, depth: 'back' },
       { id: 'fauna_val_l0', key: 'vallisneria', x: 24, y: Y, scale: 0.70, rotation: 0, flip: false, depth: 'back' },
       { id: 'fauna_val_l1', key: 'vallisneria', x: 44, y: Y, scale: 0.64, rotation: 0, flip: true, depth: 'back' },
       { id: 'fauna_crypt_l', key: 'crypt', x: 66, y: Y, scale: 0.72, rotation: 0, flip: false, depth: 'back' },
@@ -158,6 +163,8 @@ export const SCAPE_PRESETS = {
     blurb: 'Concave planted composition with disciplined hardscape scale and clear fauna lanes.',
     reviewOnly: true,
     assets: [
+      { id: 'b_wall_l', key: 'stem_wall_lush', x: 44, y: Y, scale: 0.92, rotation: 0, flip: false, depth: 'back' },
+      { id: 'b_wall_r', key: 'stem_wall_bronze', x: 226, y: Y, scale: 0.90, rotation: 0, flip: true, depth: 'back' },
       { id: 'b_rot_l0', key: 'vallisneria', x: 12, y: Y, scale: 1.06, rotation: 0, flip: false, depth: 'back' },
       { id: 'b_rot_l1', key: 'vallisneria', x: 28, y: Y, scale: 1.00, rotation: 0, flip: true, depth: 'back' },
       { id: 'b_rot_l2', key: 'crypt', x: 44, y: Y, scale: 0.92, rotation: 0, flip: false, depth: 'back' },
@@ -185,6 +192,9 @@ export const SCAPE_PRESETS = {
     blurb: 'Maximum planted fullness with minimized hardscape and a full-height aquascape wall.',
     reviewOnly: true,
     assets: [
+      { id: 'l_wall_l', key: 'stem_wall_lush', x: 42, y: Y, scale: 1.05, rotation: 0, flip: false, depth: 'back' },
+      { id: 'l_wall_c', key: 'stem_wall_bronze', x: 142, y: Y, scale: 1.02, rotation: 0, flip: true, depth: 'back' },
+      { id: 'l_wall_r', key: 'stem_wall_lush', x: 228, y: Y, scale: 1.06, rotation: 0, flip: true, depth: 'back' },
       { id: 'l_rot_0', key: 'vallisneria', x: 10, y: Y, scale: 1.12, rotation: 0, flip: false, depth: 'back' },
       { id: 'l_rot_1', key: 'vallisneria', x: 24, y: Y, scale: 1.10, rotation: 0, flip: true, depth: 'back' },
       { id: 'l_rot_2', key: 'crypt', x: 38, y: Y, scale: 1.00, rotation: 0, flip: false, depth: 'back' },
@@ -215,6 +225,8 @@ export const SCAPE_PRESETS = {
     blurb: 'Dense side plantings with a polished central viewing lane for fish and cherry shrimp.',
     reviewOnly: true,
     assets: [
+      { id: 'o_wall_l', key: 'stem_wall_lush', x: 42, y: Y, scale: 0.92, rotation: 0, flip: false, depth: 'back' },
+      { id: 'o_wall_r', key: 'stem_wall_lush', x: 238, y: Y, scale: 0.94, rotation: 0, flip: true, depth: 'back' },
       { id: 'o_rot_l0', key: 'vallisneria', x: 12, y: Y, scale: 1.08, rotation: 0, flip: false, depth: 'back' },
       { id: 'o_rot_l1', key: 'vallisneria', x: 28, y: Y, scale: 1.02, rotation: 0, flip: true, depth: 'back' },
       { id: 'o_rot_l2', key: 'crypt', x: 44, y: Y, scale: 0.94, rotation: 0, flip: false, depth: 'back' },

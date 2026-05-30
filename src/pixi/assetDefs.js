@@ -29,6 +29,8 @@ export const ASSET_DEFS = {
   vallisneria:  { key: 'vallisneria', label: 'Vallisneria', w: 40, h: 116, layer: 'plant', defaultScale: 0.66, sway: true },
   moss:         { key: 'moss', label: 'Java Moss', w: 64, h: 34, layer: 'plant', defaultScale: 0.62 },
   buce:         { key: 'buce', label: 'Bucephalandra', w: 48, h: 84, layer: 'plant', defaultScale: 0.66, sway: true },
+  stem_wall_lush: { key: 'stem_wall_lush', label: 'Lush Stem Wall', w: 72, h: 112, layer: 'plant', defaultScale: 0.92, sway: true },
+  stem_wall_bronze: { key: 'stem_wall_bronze', label: 'Bronze Stem Wall', w: 68, h: 104, layer: 'plant', defaultScale: 0.9, sway: true },
   floating_salvinia: { key: 'floating_salvinia', label: 'Salvinia Floater', w: 56, h: 32, layer: 'plant', defaultScale: 0.92, isFloating: true },
   floating_redroot:  { key: 'floating_redroot',  label: 'Red Root Floater', w: 48, h: 34, layer: 'plant', defaultScale: 0.92, isFloating: true },
 };
