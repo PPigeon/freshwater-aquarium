@@ -627,7 +627,25 @@ def process_frame(img_rgba_intermediate, frame_w, frame_h, subject_type='sprite'
 # ──────────────────────────────────────────────────────────────────────────────
 
 def process_subject(subject_key, spec, dry_run=False):
-    """Process a single subject from reference photos to sprite sheet."""
+    """Process a single subject from reference photos to sprite sheet.
+
+    For animated multi-row subjects (shrimp) with ≥ rows reference photos,
+    a different reference photo is used per animation row so each row shows
+    a genuinely distinct body pose rather than an elastic-deform clone of
+    the same still image.  Within each row the frames are mildly deformed
+    from that row's reference photo.
+
+    Row-specific deformation parameters for shrimp:
+      Row 0 forage : sigma 2.5 / smoothing 18  (subtle head-dip variation)
+      Row 1 idle   : sigma 1.0 / smoothing 25  (minimal — near-static)
+      Row 2 swim   : sigma 3.5 / smoothing 12  (more lateral body shift)
+    """
+    SHRIMP_ROW_DEFORM = [
+        {'sigma': 2.5, 'smoothing': 18},   # row 0: forage
+        {'sigma': 1.0, 'smoothing': 25},   # row 1: idle
+        {'sigma': 3.5, 'smoothing': 12},   # row 2: swim
+    ]
+
     ref_dir_key = spec.get('ref_dir', subject_key)
     ref_dir = REFERENCES / ref_dir_key
     out_dir = subject_intermediate_dir(subject_key)
@@ -650,8 +668,58 @@ def process_subject(subject_key, spec, dry_run=False):
         print(f"  -> Would output: {output_path}")
         return None
 
-    # Use the first (or best) reference image
-    # If multiple images exist, we cycle through them for different frame groups
+    fw, fh       = spec['frame_w'], spec['frame_h']
+    subject_type = spec['subject_type']
+    rows         = spec.get('rows', 1)
+    cols         = spec.get('cols', 1)
+    is_shrimp    = (subject_type == 'shrimp')
+    multi_ref    = is_shrimp and len(ref_images) >= 2
+
+    # ── Multi-reference animated path (shrimp with ≥2 photos) ──────────────
+    if multi_ref:
+        print(f"  [ANIM] Using per-row reference photos for {rows}-row animation")
+        processed_frames = []
+        synth_info = spec.get('synth', False)
+
+        for row_idx in range(rows):
+            # Assign a different reference photo to each row
+            ref_idx   = row_idx % len(ref_images)
+            src_path  = ref_images[ref_idx]
+            row_key   = f'{subject_key}_row{row_idx}'
+            print(f"    Row {row_idx}: {src_path.name}")
+
+            # Stage 1: Background removal (cached per source photo)
+            img_rgba_full = stage1_remove_background(src_path, out_dir, subject_key)
+
+            # Colour synthesis for synthesised shrimp variants
+            if synth_info:
+                variant = spec['variant']
+                _, hue_shift, sat_f, val_f = SHRIMP_SYNTH[variant]
+                img_rgba_full = apply_hue_shift(img_rgba_full, hue_shift, sat_f, val_f)
+
+            # Stage 2: Resize
+            img_rgba_inter = stage2_resize_intermediate(img_rgba_full, spec)
+
+            # Stage 3: Generate 'cols' frames with row-specific mild deformation
+            row_deform = SHRIMP_ROW_DEFORM[row_idx] if row_idx < len(SHRIMP_ROW_DEFORM) else {'sigma': 2.0, 'smoothing': 18}
+            arr = np.array(img_rgba_inter)
+            row_frames = [img_rgba_inter]
+            for i in range(1, cols):
+                seed = det_seed(row_key, i)
+                deformed = _elastic_deform_scipy(arr, sigma=row_deform['sigma'], smoothing=row_deform['smoothing'], seed=seed)
+                row_frames.append(Image.fromarray(deformed))
+
+            # Stages 5–11: Process each frame in this row
+            for frame_img in row_frames:
+                processed_frames.append(process_frame(frame_img, fw, fh, subject_type))
+
+        # Stage 12: Assemble
+        sheet = stage12_assemble(processed_frames, cols=cols, rows=rows, frame_w=fw, frame_h=fh)
+        sheet.save(output_path)
+        print(f"  [S12] OK {sheet.width}x{sheet.height}px -> {output_path}")
+        return processed_frames
+
+    # ── Single-reference path (plants, hardscape, fish, single-photo shrimp) ─
     source_path = ref_images[0]
 
     # Stage 1: Background removal
@@ -665,7 +733,7 @@ def process_subject(subject_key, spec, dry_run=False):
         print(f"  [SYNTH] Applying hue shift from {base_variant}: h={hue_shift}° sx{sat_f} vx{val_f}")
         img_rgba_full = apply_hue_shift(img_rgba_full, hue_shift, sat_f, val_f)
 
-    # Stage 2: Resize to 3x game resolution
+    # Stage 2: Resize to 5× game resolution
     img_rgba_inter = stage2_resize_intermediate(img_rgba_full, spec)
     # Save intermediate for inspection
     inter_path = out_dir / 'intermediate.png'
@@ -678,8 +746,6 @@ def process_subject(subject_key, spec, dry_run=False):
 
     # Stages 5–11: Process each frame
     processed_frames = []
-    fw, fh = spec['frame_w'], spec['frame_h']
-    subject_type = spec['subject_type']
 
     for i, frame_img in enumerate(frames_intermediate):
         frame_out = process_frame(frame_img, fw, fh, subject_type)
