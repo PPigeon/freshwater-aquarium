@@ -574,6 +574,142 @@ function gBuce(p, bk, seed) {
 
 function gLily(p, bk, seed) { return gCrypt(p, bk, seed); }
 
+function gSword(p, bk, seed) {
+  // Amazon Sword / Echinodorus: large lance-shaped leaves from a central crown.
+  // Each leaf: narrow petiole → widens to peak at ~40 % of length → tapers to tip.
+  // Inner leaves near-vertical and tallest; outer leaves spread and shorter.
+  // Completely different silhouette from gCrypt (rosette with rounded blobs).
+  const rnd = mulberry32(seed);
+  const pal = ramp8(bk.base, 0x071408, 0xe0ffe8);
+  const acc = ramp8(bk.accent ?? bk.base, 0x060a06, 0xd0ffd4);
+  const w = p.w, h = p.h, cx = w * 0.5, baseY = h - 1;
+
+  // Crown base
+  p.ellipse(cx, baseY - h * 0.015, w * 0.20, h * 0.025, pal[1], 190);
+
+  const leaves = 7 + Math.floor(rnd() * 4);   // 7-10 leaves
+  for (let i = 0; i < leaves; i++) {
+    const spread = (i / Math.max(1, leaves - 1) - 0.5) * 2;
+    // Inner leaves tallest, outer leaves shorter
+    const len = h * (0.60 + (1 - Math.abs(spread)) * 0.38) * (0.82 + rnd() * 0.24);
+    const ang = -Math.PI / 2 + spread * 0.80 + (rnd() - 0.5) * 0.12;
+    const rootX = cx + spread * w * 0.05;
+    const ex = rootX + Math.cos(ang) * len;
+    const ey = baseY + Math.sin(ang) * len;
+
+    // Petiole (slender stem connecting crown to blade)
+    const petLen = len * 0.16;
+    p.limb(rootX, baseY,
+      Math.round(rootX + Math.cos(ang) * petLen),
+      Math.round(baseY + Math.sin(ang) * petLen),
+      1.3, 0.5, pal[1], 225);
+
+    // Lance blade: series of overlapping filled ellipses along the leaf axis.
+    // Width profile:  0 at base → peak at 35-40 % of blade → 0 at tip  (lance silhouette).
+    const nBlobs = 10 + Math.floor(rnd() * 4);
+    const maxW = w * (0.20 + (1 - Math.abs(spread)) * 0.07 + rnd() * 0.04);
+    const leafPal = i % 4 === 0 ? acc : pal;
+    for (let b = 0; b < nBlobs; b++) {
+      const t = 0.10 + (b / nBlobs) * 0.86;
+      const lx = rootX + (ex - rootX) * t;
+      const ly = baseY + (ey - baseY) * t;
+      // Lance profile: peak near t=0.36, taper both ends
+      const profile = Math.max(0, Math.sin(Math.min(1, t * 2.0) * Math.PI));
+      const bW = Math.max(0.8, maxW * profile);
+      const bH = Math.max(0.5, h * (0.028 + (1 - t) * 0.008));
+      leafBlob8(p, lx, ly, bW, bH, ang + Math.PI / 2 + (rnd() - 0.5) * 0.10, leafPal);
+    }
+
+    // Midrib vein
+    p.line(Math.round(rootX), baseY, Math.round(ex), Math.round(ey), pal[6], 62);
+    // Lateral veins (2-3 per leaf)
+    const nV = 2 + Math.floor(rnd() * 2);
+    for (let v = 0; v < nV; v++) {
+      const vt = 0.22 + v / (nV + 0.5) * 0.54;
+      const vx = Math.round(rootX + (ex - rootX) * vt);
+      const vy = Math.round(baseY + (ey - baseY) * vt);
+      const vLen = maxW * Math.max(0, Math.sin(Math.min(1, vt * 2.0) * Math.PI)) * 0.68;
+      const vA = ang + Math.PI / 2;
+      p.line(vx, vy, Math.round(vx + Math.cos(vA) * vLen), Math.round(vy + Math.sin(vA) * vLen), pal[5], 50);
+      p.line(vx, vy, Math.round(vx - Math.cos(vA) * vLen), Math.round(vy - Math.sin(vA) * vLen), pal[5], 40);
+    }
+  }
+  p.outline(darker(bk.base, 0.48));
+}
+
+function gCabomba(p, bk, seed) {
+  // Cabomba / Limnophila: vertical main stem with whorled FAN-LEAF clusters at intervals.
+  // Each whorl is a left-right pair of radiating "feather fans" — fine branches
+  // spreading from the stem like an open hand.  Produces a distinctive feathery
+  // column silhouette unlike any other plant kind.
+  const rnd = mulberry32(seed);
+  const pal = ramp8(bk.base, 0x071408, 0xd8ffe0);
+  const w = p.w, h = p.h, cx = w * 0.5, baseY = h - 1;
+
+  // Slight lean
+  const lean = (rnd() - 0.5) * w * 0.10;
+  const tipX = cx + lean;
+  const tipY = Math.round(h * 0.04);
+
+  // Main stem
+  p.limb(cx, baseY, tipX, tipY, 1.0, 0.4, pal[2], 235);
+
+  // Whorled fan clusters — 5-9 whorls spaced bottom to top
+  const nWhorls = 5 + Math.floor(rnd() * 4);
+  for (let wi = 0; wi < nWhorls; wi++) {
+    const t = 0.07 + (wi / nWhorls) * 0.88;
+    const stX = Math.round(cx + lean * t);
+    const stY = Math.round(baseY - (baseY - tipY) * t);
+
+    // Fan size: largest in the middle zone, smaller near base and tip
+    const fanSize = 0.45 + Math.sin(t * Math.PI) * 0.55;
+    const fanRadius = w * (0.18 + fanSize * 0.28) * (0.70 + rnd() * 0.45);
+    const nRays = 5 + Math.floor(rnd() * 4);   // 5-8 rays per side
+
+    for (const side of [-1, 1]) {
+      // Fan base angle: left fan spreads leftward, right fan rightward, both droop slightly
+      const baseAng = (side < 0 ? Math.PI : 0.0) + 0.20 * side + (rnd() - 0.5) * 0.25;
+      const spreadAng = 1.10 + rnd() * 0.55;
+
+      for (let ri = 0; ri < nRays; ri++) {
+        const rt = ri / Math.max(1, nRays - 1);
+        const ang = baseAng + (rt - 0.5) * spreadAng;
+        // Rays at fan edges shorter, middle rays longest (natural fan shape)
+        const rLen = fanRadius * (0.72 + Math.sin(rt * Math.PI) * 0.38) * (0.75 + rnd() * 0.40);
+        const ex = stX + Math.cos(ang) * rLen;
+        const ey = stY + Math.sin(ang) * rLen;
+        if (ex < 0 || ex > w - 1 || ey < 0 || ey > h - 1) continue;
+        // Ray as a thin limb
+        p.limb(stX, stY, Math.round(ex), Math.round(ey),
+          0.7 + rnd() * 0.4, 0.2,
+          pal[3 + Math.floor(rnd() * 2)], 185);
+        // Tiny tip blob — the small leaflet at each ray end
+        p.ellipse(ex, ey, 1.0 + rnd() * 0.7, 0.6 + rnd() * 0.4,
+          pal[4 + Math.floor(rnd() * 2)], 175);
+        // Sub-rays (secondary branching on the 2 centre rays)
+        if (Math.abs(rt - 0.5) < 0.22 && rLen > fanRadius * 0.55) {
+          for (const sub of [-1, 1]) {
+            const subAng = ang + sub * (0.40 + rnd() * 0.30);
+            const subLen = rLen * (0.30 + rnd() * 0.22);
+            const sx = stX + Math.cos(ang) * rLen * 0.52 + Math.cos(subAng) * subLen;
+            const sy = stY + Math.sin(ang) * rLen * 0.52 + Math.sin(subAng) * subLen;
+            if (sx < 0 || sx > w - 1 || sy < 0 || sy > h - 1) continue;
+            p.limb(
+              Math.round(stX + Math.cos(ang) * rLen * 0.52),
+              Math.round(stY + Math.sin(ang) * rLen * 0.52),
+              Math.round(sx), Math.round(sy), 0.5, 0.1, pal[4], 150);
+          }
+        }
+      }
+    }
+    // Whorl node: small dot at attachment point
+    p.ellipse(stX, stY, 1.6, 1.0, pal[2], 195);
+  }
+  // Fine tip bud
+  p.ellipse(tipX, tipY, 2.0, 1.4, pal[5], 220);
+  // No global outline — merges fine rays into wire-trellis on upscale
+}
+
 function gMoss(p, bk, seed) {
   const rnd = mulberry32(seed);
   const pal = ramp8(bk.base, 0x081008, 0xd0ffd0);
@@ -909,6 +1045,8 @@ function drawFrame(p, entry, row, col, cols, seed) {
     case 'buce':     return gBuce(p, bk, seed);
     case 'lily':     return gLily(p, bk, seed);
     case 'moss':     return gMoss(p, bk, seed);
+    case 'sword':    return gSword(p, bk, seed);
+    case 'feather':  return gCabomba(p, bk, seed);
     case 'floating': return gFloating(p, bk, seed);
     case 'shrimp':   return gShrimp(p, bk, row, col, cols, seed);
     case 'fish':     return gFish(p, bk, col, cols, seed);

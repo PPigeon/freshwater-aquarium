@@ -37,6 +37,10 @@ const PLANT_PAL = {
   stem_wall_bronze: { kind: 'thicket', base: 0x6f8f38, accent: 0xb7683f },
   floating_salvinia: { kind: 'floating', base: 0x4fae5a, accent: 0x86d77e },
   floating_redroot: { kind: 'floating', base: 0x6aa85a, accent: 0x9a4a3a },
+  // New tall plants — reach waterline at scale 1.00 (5×, pixel-perfect)
+  amazon_sword: { kind: 'sword',   base: 0x226232, accent: 0x3a8a48 },  // deep emerald lance leaves
+  cabomba:      { kind: 'feather', base: 0x267038, accent: 0x3ea050 },  // feathery whorled fans
+  ludwigia:     { kind: 'stem',   base: 0x3a6828, accent: 0xc04828 },  // reddish-tipped stems
 };
 
 function withContract(entry) {

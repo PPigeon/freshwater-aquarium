@@ -39,4 +39,9 @@ export const ASSET_DEFS = {
   // Floating plants: 0.60 (3×) — 28–34 world units wide, delicate not blob
   floating_salvinia: { key: 'floating_salvinia', label: 'Salvinia Floater', w: 56, h: 32, layer: 'plant', defaultScale: 0.60, isFloating: true },
   floating_redroot:  { key: 'floating_redroot',  label: 'Red Root Floater', w: 48, h: 34, layer: 'plant', defaultScale: 0.60, isFloating: true },
+  // Tall plants — worldSize h=116-118 → tops reach waterline at scale 1.00 (5×, pixel-perfect)
+  // At scale 1.00: screen render = source pixels × 5 exactly → maximum fidelity
+  amazon_sword: { key: 'amazon_sword', label: 'Amazon Sword',  w: 52, h: 116, layer: 'plant', defaultScale: 1.00 },
+  cabomba:      { key: 'cabomba',      label: 'Cabomba',       w: 32, h: 118, layer: 'plant', defaultScale: 1.00, sway: true },
+  ludwigia:     { key: 'ludwigia',     label: 'Ludwigia',      w: 28, h: 116, layer: 'plant', defaultScale: 1.00, sway: true },
 };

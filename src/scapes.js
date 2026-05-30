@@ -59,13 +59,17 @@ export const SCAPE_PRESETS = {
       { id: 'iwa_suteishi1',  key: 'stone_seiryu_sm', x:  46, y: Y + 2, scale: 0.62, rotation:   5, flip: false, depth: 'front' },
       { id: 'iwa_suteishi2',  key: 'stone_seiryu_sm', x: 196, y: Y + 2, scale: 0.60, rotation:  -5, flip: true,  depth: 'front' },
       { id: 'iwa_suteishi3',  key: 'stone_lava',      x: 148, y: Y + 2, scale: 0.60, rotation:   3, flip: true,  depth: 'front' },
-      // Background stems — 0.80 (4×) / 0.60 (3×) clean
-      { id: 'iwa_val_l',  key: 'vallisneria', x:  14, y: Y, scale: 0.60, rotation: 0, flip: false, depth: 'back' },
-      { id: 'iwa_rot_l1', key: 'vallisneria', x:  28, y: Y, scale: 0.80, rotation: 0, flip: false, depth: 'back' },
-      { id: 'iwa_rot_l2', key: 'crypt',       x:  44, y: Y, scale: 0.60, rotation: 0, flip: true,  depth: 'back' },
-      { id: 'iwa_rot_r1', key: 'vallisneria', x: 220, y: Y, scale: 0.80, rotation: 0, flip: true,  depth: 'back' },
-      { id: 'iwa_rot_r2', key: 'crypt',       x: 240, y: Y, scale: 0.60, rotation: 0, flip: false, depth: 'back' },
-      { id: 'iwa_val_r',  key: 'vallisneria', x: 270, y: Y, scale: 0.60, rotation: 0, flip: true,  depth: 'back' },
+      // Tall depth layer (back-most) — scale 1.00 (5×, pixel-perfect); tops reach waterline
+      // Cabomba feathery columns flank, with vals between them
+      { id: 'iwa_cab_l',   key: 'cabomba',      x:  18, y: Y, scale: 1.00, rotation: 0, flip: false, depth: 'back' },
+      { id: 'iwa_cab_r',   key: 'cabomba',      x: 254, y: Y, scale: 1.00, rotation: 0, flip: true,  depth: 'back' },
+      // Vallisneria layer at 0.80 (4×) in front of cabomba
+      { id: 'iwa_val_l',  key: 'vallisneria', x:  14, y: Y, scale: 0.80, rotation: 0, flip: false, depth: 'back' },
+      { id: 'iwa_rot_l1', key: 'vallisneria', x:  32, y: Y, scale: 0.80, rotation: 0, flip: false, depth: 'back' },
+      { id: 'iwa_rot_l2', key: 'crypt',       x:  48, y: Y, scale: 0.60, rotation: 0, flip: true,  depth: 'back' },
+      { id: 'iwa_rot_r1', key: 'vallisneria', x: 218, y: Y, scale: 0.80, rotation: 0, flip: true,  depth: 'back' },
+      { id: 'iwa_rot_r2', key: 'crypt',       x: 236, y: Y, scale: 0.60, rotation: 0, flip: false, depth: 'back' },
+      { id: 'iwa_val_r',  key: 'vallisneria', x: 268, y: Y, scale: 0.80, rotation: 0, flip: true,  depth: 'back' },
       // Mid-ground epiphytes — 0.60 (3×) clean
       { id: 'iwa_fern_l',    key: 'java_fern', x: 104, y: Y + 1, scale: 0.60, rotation: -2, flip: false, depth: 'front' },
       { id: 'iwa_fern_r',    key: 'java_fern', x: 156, y: Y + 1, scale: 0.60, rotation:  2, flip: true,  depth: 'front' },
@@ -90,20 +94,25 @@ export const SCAPE_PRESETS = {
       { id: 'nat_wood_main',    key: 'wood_manzanita',  x: 112, y: Y + 1, scale: 0.60, rotation:  -8, flip: false, depth: 'mid'   },
       { id: 'nat_dragon',       key: 'stone_dragon',    x: 168, y: Y + 1, scale: 0.80, rotation:  -5, flip: true,  depth: 'mid'   },
       { id: 'nat_wood_side',    key: 'wood_redmoor',    x: 200, y: Y + 2, scale: 0.40, rotation:  -9, flip: false, depth: 'mid'   },
-      // Background stems — 0.80 / 0.60 clean
-      { id: 'nat_rot_l1',    key: 'vallisneria', x:  16, y: Y, scale: 0.80, rotation: 0, flip: false, depth: 'back' },
-      { id: 'nat_rot_l2',    key: 'vallisneria', x:  30, y: Y, scale: 0.80, rotation: 0, flip: true,  depth: 'back' },
-      { id: 'nat_rot_l3',    key: 'crypt',       x:  44, y: Y, scale: 0.60, rotation: 0, flip: false, depth: 'back' },
-      { id: 'nat_crypt_l',   key: 'crypt',       x:  60, y: Y, scale: 0.60, rotation: 0, flip: false, depth: 'back' },
+      // Extreme-background tall layer — scale 1.00 (5×, pixel-perfect); tops reach waterline.
+      // Ludwigia (warm reddish tips) + cabomba (feathery) create COLOUR + TEXTURE depth.
+      { id: 'nat_ludw_l',  key: 'ludwigia',     x:  20, y: Y, scale: 1.00, rotation: 0, flip: false, depth: 'back' },
+      { id: 'nat_ludw_l2', key: 'ludwigia',     x:  36, y: Y, scale: 1.00, rotation: 0, flip: true,  depth: 'back' },
+      { id: 'nat_cab_l',   key: 'cabomba',      x:   8, y: Y, scale: 1.00, rotation: 0, flip: false, depth: 'back' },
+      { id: 'nat_cab_r',   key: 'cabomba',      x: 266, y: Y, scale: 1.00, rotation: 0, flip: true,  depth: 'back' },
+      { id: 'nat_ludw_r',  key: 'ludwigia',     x: 250, y: Y, scale: 1.00, rotation: 0, flip: true,  depth: 'back' },
+      // Amazon sword — large mid-back focal plant, left of centre
+      { id: 'nat_sword',   key: 'amazon_sword', x:  88, y: Y, scale: 1.00, rotation: 0, flip: false, depth: 'back' },
+      // Vallisneria layer at 0.80 (4×) filling the background
+      { id: 'nat_rot_l1',    key: 'vallisneria', x:  52, y: Y, scale: 0.80, rotation: 0, flip: false, depth: 'back' },
+      { id: 'nat_rot_l2',    key: 'vallisneria', x:  68, y: Y, scale: 0.80, rotation: 0, flip: true,  depth: 'back' },
       { id: 'nat_rot_c1',    key: 'vallisneria', x: 136, y: Y, scale: 0.80, rotation: 0, flip: false, depth: 'back' },
-      { id: 'nat_rot_c2',    key: 'crypt',       x: 150, y: Y, scale: 0.60, rotation: 0, flip: true,  depth: 'back' },
-      { id: 'nat_rot_c3',    key: 'crypt',       x: 164, y: Y, scale: 0.60, rotation: 0, flip: false, depth: 'back' },
-      { id: 'nat_rot_r1',    key: 'vallisneria', x: 206, y: Y, scale: 0.80, rotation: 0, flip: true,  depth: 'back' },
-      { id: 'nat_rot_r2',    key: 'vallisneria', x: 222, y: Y, scale: 0.80, rotation: 0, flip: false, depth: 'back' },
-      { id: 'nat_rot_r3',    key: 'crypt',       x: 238, y: Y, scale: 0.60, rotation: 0, flip: true,  depth: 'back' },
-      { id: 'nat_val_far_r', key: 'vallisneria', x: 254, y: Y, scale: 0.60, rotation: 0, flip: true,  depth: 'back' },
-      { id: 'nat_val_far_r2',key: 'vallisneria', x: 270, y: Y, scale: 0.60, rotation: 0, flip: false, depth: 'back' },
+      { id: 'nat_rot_c2',    key: 'crypt',       x: 152, y: Y, scale: 0.60, rotation: 0, flip: true,  depth: 'back' },
+      { id: 'nat_rot_r1',    key: 'vallisneria', x: 208, y: Y, scale: 0.80, rotation: 0, flip: true,  depth: 'back' },
+      { id: 'nat_rot_r2',    key: 'vallisneria', x: 224, y: Y, scale: 0.80, rotation: 0, flip: false, depth: 'back' },
+      { id: 'nat_crypt_l',   key: 'crypt',       x: 116, y: Y, scale: 0.60, rotation: 0, flip: false, depth: 'back' },
       { id: 'nat_crypt_mid', key: 'crypt',       x: 178, y: Y, scale: 0.60, rotation: 0, flip: true,  depth: 'back' },
+      { id: 'nat_val_far_r', key: 'vallisneria', x: 244, y: Y, scale: 0.60, rotation: 0, flip: true,  depth: 'back' },
       // Mid-ground epiphytes — 0.60 clean
       { id: 'nat_fern_l',    key: 'java_fern', x:  92, y: Y + 1, scale: 0.60, rotation: -2, flip: false, depth: 'front' },
       { id: 'nat_anubias_l', key: 'anubias',   x:  62, y: Y + 1, scale: 0.60, rotation:  0, flip: false, depth: 'front' },

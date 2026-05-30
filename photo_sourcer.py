@@ -147,6 +147,22 @@ QUERIES: dict[str, list[str]] = {
         'red root floater aquatic plant macro photograph',
         'ludwigia sedoides floating aquarium plant',
     ],
+    # New tall plants — full-plant shots on white/dark uniform background
+    'plants/amazon_sword': [
+        'echinodorus bleheri amazon sword plant aquarium isolated white background',
+        'amazon sword echinodorus aquatic plant full plant photograph',
+        'echinodorus aquarium plant large leaves high resolution',
+    ],
+    'plants/cabomba': [
+        'cabomba caroliniana aquarium plant isolated white background full plant',
+        'cabomba feathery aquatic plant photograph close up',
+        'fan wort cabomba freshwater aquarium plant',
+    ],
+    'plants/ludwigia': [
+        'ludwigia repens aquarium stem plant isolated white background red green',
+        'ludwigia arcuata stem plant aquarium close up photograph',
+        'ludwigia freshwater aquarium plant reddish stems',
+    ],
 
     # ── hardscape: isolated / white-background shots work best ────────────────
     'hardscape/stone_seiryu': [
