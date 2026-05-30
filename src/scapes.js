@@ -98,15 +98,16 @@ export const SCAPE_PRESETS = {
       // Ludwigia (warm reddish tips) + cabomba (feathery) create COLOUR + TEXTURE depth.
       // Left cluster: cabomba behind + dense ludwigia group in front
       { id: 'nat_cab_l',   key: 'cabomba',      x:  10, y: Y, scale: 1.00, rotation: 0, flip: false, depth: 'back' },
-      { id: 'nat_ludw_l',  key: 'ludwigia',     x:  20, y: Y, scale: 1.00, rotation: 0, flip: false, depth: 'back' },
-      { id: 'nat_ludw_l2', key: 'ludwigia',     x:  30, y: Y, scale: 1.00, rotation: 0, flip: true,  depth: 'back' },
-      { id: 'nat_ludw_l3', key: 'ludwigia',     x:  40, y: Y, scale: 1.00, rotation: 0, flip: false, depth: 'back' },
-      { id: 'nat_ludw_l4', key: 'ludwigia',     x:  50, y: Y, scale: 0.80, rotation: 0, flip: true,  depth: 'back' },
+      // Ludwigia at 0.80 (4×): 116×0.80 = 93 world units = 82% of column, same as val
+      { id: 'nat_ludw_l',  key: 'ludwigia',     x:  20, y: Y, scale: 0.80, rotation: 0, flip: false, depth: 'back' },
+      { id: 'nat_ludw_l2', key: 'ludwigia',     x:  30, y: Y, scale: 0.80, rotation: 0, flip: true,  depth: 'back' },
+      { id: 'nat_ludw_l3', key: 'ludwigia',     x:  40, y: Y, scale: 0.80, rotation: 0, flip: false, depth: 'back' },
+      { id: 'nat_ludw_l4', key: 'ludwigia',     x:  50, y: Y, scale: 0.60, rotation: 0, flip: true,  depth: 'back' },
       // Right cluster: mirror — ludwigia first, cabomba behind at right edge
-      { id: 'nat_ludw_r',  key: 'ludwigia',     x: 232, y: Y, scale: 0.80, rotation: 0, flip: true,  depth: 'back' },
-      { id: 'nat_ludw_r2', key: 'ludwigia',     x: 242, y: Y, scale: 1.00, rotation: 0, flip: false, depth: 'back' },
-      { id: 'nat_ludw_r3', key: 'ludwigia',     x: 252, y: Y, scale: 1.00, rotation: 0, flip: true,  depth: 'back' },
-      { id: 'nat_ludw_r4', key: 'ludwigia',     x: 262, y: Y, scale: 1.00, rotation: 0, flip: false, depth: 'back' },
+      { id: 'nat_ludw_r',  key: 'ludwigia',     x: 232, y: Y, scale: 0.60, rotation: 0, flip: true,  depth: 'back' },
+      { id: 'nat_ludw_r2', key: 'ludwigia',     x: 242, y: Y, scale: 0.80, rotation: 0, flip: false, depth: 'back' },
+      { id: 'nat_ludw_r3', key: 'ludwigia',     x: 252, y: Y, scale: 0.80, rotation: 0, flip: true,  depth: 'back' },
+      { id: 'nat_ludw_r4', key: 'ludwigia',     x: 262, y: Y, scale: 0.80, rotation: 0, flip: false, depth: 'back' },
       { id: 'nat_cab_r',   key: 'cabomba',      x: 270, y: Y, scale: 1.00, rotation: 0, flip: true,  depth: 'back' },
       // Amazon sword — large mid-back focal plant, left of centre
       { id: 'nat_sword',   key: 'amazon_sword', x:  88, y: Y, scale: 1.40, rotation: 0, flip: false, depth: 'back' },
