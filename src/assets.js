@@ -119,13 +119,4 @@ export async function loadAssets() {
 
 export const VARIANT_COLORS = {
   red_cherry:     '#c82820',
-  rili:           '#c82820',
-  blue_dream:     '#3264c8',
-  blue_rili:      '#3264c8',
-  yellow_fire:    '#dcc81e',
-  orange_pumpkin: '#dc821e',
-  snowball:       '#e6e6f0',
-  black_rose:     '#281923',
-  green_jade:     '#3ca050',
-  carbon_rili:    '#281923',
 };

@@ -22,10 +22,7 @@ const MOLT_INTERVAL_MAX    = 4 * 60 * 60 * 1000;
 const MOLT_FADE_DURATION   = 20 * 60 * 1000;       // 20 min
 const MAX_SHRIMP           = 20;
 
-const VARIANTS = [
-  'red_cherry','rili','blue_dream','blue_rili','yellow_fire',
-  'orange_pumpkin','snowball','black_rose','green_jade','carbon_rili'
-];
+const VARIANTS = ['red_cherry'];
 
 export class Simulation {
   constructor() {
@@ -59,15 +56,16 @@ export class Simulation {
     // Seed initial shrimp if none exist
     if (!this.state.shrimpPopulation.length) {
       const initial = [
-        'red_cherry','red_cherry','rili','blue_dream',
-        'green_jade','yellow_fire','orange_pumpkin','snowball',
+        'red_cherry','red_cherry','red_cherry','red_cherry',
+        'red_cherry','red_cherry','red_cherry','red_cherry',
       ];
       this.state.shrimpPopulation = initial.map((v, i) => this._createShrimp(v, i));
       return;
     }
     this.state.shrimpPopulation = this.state.shrimpPopulation.map((s) => ({
-      sex: Math.random() < 0.48 ? 'male' : 'female',
       ...s,
+      variant: 'red_cherry',
+      sex: Math.random() < 0.48 ? 'male' : 'female',
     }));
   }
 

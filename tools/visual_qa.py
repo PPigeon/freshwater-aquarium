@@ -25,7 +25,11 @@ DEFAULT_OUT = ROOT / "review" / "visual_qa"
 
 
 GROUPS = {
-    "shrimp": sorted(p for p in ASSET_ROOT.glob("*.png") if p.stem not in {"molt"}),
+    "shrimp": [
+        ASSET_ROOT / "red_cherry_male.png",
+        ASSET_ROOT / "red_cherry_female.png",
+        ASSET_ROOT / "red_cherry_berried.png",
+    ],
     "fish": [ASSET_ROOT / "background" / "neon_tetra.png"],
     "hardscape": sorted((ASSET_ROOT / "hardscape").glob("*.png")),
     "plants": sorted((ASSET_ROOT / "plants").glob("*.png")),
