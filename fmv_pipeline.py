@@ -220,6 +220,35 @@ def merge_alpha(img_rgb, alpha):
     r, g, b = img_rgb.split()
     return Image.merge('RGBA', (r, g, b, alpha))
 
+def cleanup_alpha_edges(img_rgba, subject_type='sprite'):
+    """
+    Remove RGB bleed from transparent pixels and premultiply faint fringe pixels
+    so sprites composite cleanly against water and substrate.
+    """
+    arr = np.array(img_rgba.convert('RGBA'), dtype=np.uint8)
+    rgb = arr[:, :, :3].astype(np.float32)
+    alpha = arr[:, :, 3].astype(np.uint8)
+
+    # Fully transparent pixels should not retain source-photo colour.
+    fully_transparent = alpha == 0
+    rgb[fully_transparent] = 0
+
+    # Very faint antialias pixels tend to create bright halos after quantization.
+    # Premultiply them back down and discard the weakest remnants.
+    edge_threshold = 42 if subject_type in {'hardscape', 'plant', 'plant_multi'} else 32
+    faint = (alpha > 0) & (alpha < edge_threshold)
+    if np.any(faint):
+        scale = (alpha[faint].astype(np.float32) / 255.0)[:, None]
+        rgb[faint] *= scale
+    alpha[alpha <= 4] = 0
+    rgb[alpha == 0] = 0
+
+    out = np.dstack((
+        rgb.clip(0, 255).astype(np.uint8),
+        alpha.astype(np.uint8)
+    ))
+    return Image.fromarray(out, 'RGBA')
+
 # ──────────────────────────────────────────────────────────────────────────────
 # STAGE 1: BACKGROUND REMOVAL
 # ──────────────────────────────────────────────────────────────────────────────
@@ -380,11 +409,17 @@ def stage6_vhs_grade(img_rgb, subject_type='sprite', background=False):
         return img_w
 
     if subject_type == 'hardscape':
-        # Neutral grade: no warm shift, preserve the grey/brown/ochre palette
-        # that makes stone and driftwood look natural.
+        # Keep hardscape natural, but push it a little farther toward the same
+        # digitized-FMV space as the fauna and plants so it stops reading like a
+        # raw pasted photo.
+        warm = np.array([[1.01, 0.00, 0.00],
+                         [0.00, 0.99, 0.00],
+                         [0.00, -0.01, 0.96]])
+        arr = np.einsum('...j,kj->...k', arr, warm).clip(0, 1)
         img_w = Image.fromarray((arr * 255).astype(np.uint8), 'RGB')
-        img_w = ImageEnhance.Color(img_w).enhance(0.90)    # slight desaturation
-        img_w = ImageEnhance.Contrast(img_w).enhance(1.10) # pop the surface detail
+        img_w = ImageEnhance.Color(img_w).enhance(0.82)
+        img_w = ImageEnhance.Contrast(img_w).enhance(1.04)
+        img_w = ImageEnhance.Brightness(img_w).enhance(0.97)
         return img_w
 
     if subject_type in ('plant', 'plant_multi'):
@@ -396,6 +431,16 @@ def stage6_vhs_grade(img_rgb, subject_type='sprite', background=False):
         img_w = Image.fromarray((arr * 255).astype(np.uint8), 'RGB')
         img_w = ImageEnhance.Color(img_w).enhance(0.95)    # minimal desaturation
         img_w = ImageEnhance.Contrast(img_w).enhance(1.06)
+        return img_w
+
+    if subject_type == 'fish':
+        warm = np.array([[1.03, 0.00, 0.00],
+                         [0.00, 1.00, 0.00],
+                         [0.00, -0.03, 0.96]])
+        arr = np.einsum('...j,kj->...k', arr, warm).clip(0, 1)
+        img_w = Image.fromarray((arr * 255).astype(np.uint8), 'RGB')
+        img_w = ImageEnhance.Color(img_w).enhance(0.92)
+        img_w = ImageEnhance.Contrast(img_w).enhance(1.08)
         return img_w
 
     # shrimp / fish / generic sprite — full 90s camcorder warm grade
@@ -441,11 +486,22 @@ def stage7_bayer_dither(img_rgb, threshold=10.0):
     result = (q * (255.0 / 63)).clip(0, 255).astype(np.uint8)
     return Image.fromarray(result, 'RGB')
 
+
+def stage7_subject_dither(img_rgb, subject_type='sprite'):
+    threshold = 10.0
+    if subject_type == 'hardscape':
+        threshold = 13.0
+    elif subject_type == 'fish':
+        threshold = 8.5
+    elif subject_type in ('plant', 'plant_multi'):
+        threshold = 9.0
+    return stage7_bayer_dither(img_rgb, threshold=threshold)
+
 # ──────────────────────────────────────────────────────────────────────────────
 # STAGE 8: CINEPAK BLOCK QUANTIZATION (4x4 block V1 codebook simulation)
 # ──────────────────────────────────────────────────────────────────────────────
 
-def stage8_cinepak_blocks(img_rgb):
+def stage8_cinepak_blocks(img_rgb, pull=0.05):
     """Simulate Cinepak V1 codebook: pull each 4x4 block 15% toward its mean."""
     arr = np.array(img_rgb, dtype=np.float32)
     H, W = arr.shape[:2]
@@ -453,18 +509,42 @@ def stage8_cinepak_blocks(img_rgb):
         for bx in range(0, W, 4):
             block = arr[by:by+4, bx:bx+4]
             mean = block.mean(axis=(0, 1), keepdims=True)
-            arr[by:by+4, bx:bx+4] = block * 0.95 + mean * 0.05   # 5% pull (was 15%)
+            arr[by:by+4, bx:bx+4] = block * (1.0 - pull) + mean * pull
     return Image.fromarray(arr.clip(0, 255).astype(np.uint8), 'RGB')
+
+
+def stage8_subject_cinepak(img_rgb, subject_type='sprite'):
+    pull = 0.05
+    if subject_type == 'hardscape':
+        pull = 0.10
+    elif subject_type == 'fish':
+        pull = 0.07
+    return stage8_cinepak_blocks(img_rgb, pull=pull)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # STAGE 9: ANALOG SIGNAL CHAIN (blur/resharpen for video capture artifacts)
 # ──────────────────────────────────────────────────────────────────────────────
 
-def stage9_analog_chain(img_rgb):
+def stage9_analog_chain(img_rgb, blur_radius=0.4, sharpen=1.95):
     """Simulate bandlimited analog capture + post-sharpening -> edge halos."""
-    blurred = img_rgb.filter(ImageFilter.GaussianBlur(radius=0.4))
-    resharpened = ImageEnhance.Sharpness(blurred).enhance(1.95)
+    blurred = img_rgb.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+    resharpened = ImageEnhance.Sharpness(blurred).enhance(sharpen)
     return resharpened
+
+
+def stage9_subject_analog(img_rgb, subject_type='sprite'):
+    blur_radius = 0.4
+    sharpen = 1.95
+    if subject_type == 'hardscape':
+        blur_radius = 0.55
+        sharpen = 1.35
+    elif subject_type == 'fish':
+        blur_radius = 0.35
+        sharpen = 1.75
+    elif subject_type in ('plant', 'plant_multi'):
+        blur_radius = 0.32
+        sharpen = 1.80
+    return stage9_analog_chain(img_rgb, blur_radius=blur_radius, sharpen=sharpen)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # STAGE 10: CHROMA FRINGE (blue-screen compositing artifacts)
@@ -513,7 +593,7 @@ def stage12_assemble(frames, cols, rows, frame_w, frame_h):
         oy = (frame_h - frame.height) // 2
         padded.paste(frame, (ox, oy), frame)
         sheet.paste(padded, (x, y), padded)
-    return sheet
+    return cleanup_alpha_edges(sheet)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # SHRIMP COLOR VARIANT SYNTHESIS
@@ -596,13 +676,13 @@ def process_frame(img_rgba_intermediate, frame_w, frame_h, subject_type='sprite'
     img_rgb = stage6_vhs_grade(img_rgb, subject_type=subject_type, background=is_background)
 
     # Stage 7: Bayer dithering to shared palette
-    img_rgb = stage7_bayer_dither(img_rgb)
+    img_rgb = stage7_subject_dither(img_rgb, subject_type=subject_type)
 
     # Stage 8: Cinepak block quantization
-    img_rgb = stage8_cinepak_blocks(img_rgb)
+    img_rgb = stage8_subject_cinepak(img_rgb, subject_type=subject_type)
 
     # Stage 9: Analog blur/resharpen
-    img_rgb = stage9_analog_chain(img_rgb)
+    img_rgb = stage9_subject_analog(img_rgb, subject_type=subject_type)
 
     # Stage 10: Chroma fringe (skip for backgrounds — they're not on blue screen)
     if not is_background:
@@ -617,10 +697,15 @@ def process_frame(img_rgba_intermediate, frame_w, frame_h, subject_type='sprite'
     # and gives the crisp-edge quality of digitised FMV sprites.
     if not is_background:
         rgb_s, alpha_s = split_alpha(result_rgba)
-        rgb_s = ImageEnhance.Sharpness(rgb_s).enhance(1.55)
+        final_sharpen = 1.55
+        if subject_type == 'hardscape':
+          final_sharpen = 1.18
+        elif subject_type == 'fish':
+          final_sharpen = 1.38
+        rgb_s = ImageEnhance.Sharpness(rgb_s).enhance(final_sharpen)
         result_rgba = merge_alpha(rgb_s, alpha_s)
 
-    return result_rgba
+    return cleanup_alpha_edges(result_rgba, subject_type=subject_type)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # PROCESS ONE SUBJECT
