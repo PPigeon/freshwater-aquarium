@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Freshwater Aquarium</title>
+  <link rel="stylesheet" href="style.css?v=13" />
+  <script>
+    window.__bootErr = [];
+    window.addEventListener('error', e => {
+      window.__bootErr.push(String((e.error && e.error.stack) || e.message || e));
+    });
+    window.addEventListener('unhandledrejection', e => {
+      const r = e.reason;
+      window.__bootErr.push('REJECT: ' + String((r && (r.stack || r.message)) || r));
+    });
+  </script>
+  <script type="importmap">
+  {
+    "imports": {
+      "pixi.js": "./src/pixi/vendor/pixi.min.mjs"
+    }
+  }
+  </script>
+</head>
+<body>
+  <canvas id="tank"></canvas>
+
+  <div id="toolbox" aria-label="Tank assets">
+    <button id="toolbox-toggle" type="button" aria-label="Collapse asset menu">Edit Tank</button>
+    <div id="toolbox-body">
+      <div class="studio-shell">
+        <nav class="studio-rail" aria-label="Editor Sections">
+          <button class="rail-tab active" data-workspace="scene" type="button" title="Scene Controls">Scene</button>
+          <button class="rail-tab" data-workspace="assets" type="button" title="Asset Library">Assets</button>
+          <button class="rail-tab" data-workspace="selected" type="button" title="Selected Asset">Selected</button>
+        </nav>
+
+        <div class="workspace-stack">
+          <section id="workspace-scene" class="workspace-pane active" aria-label="Scene Controls">
+            <div class="panel-title">Scene Controls</div>
+            <section class="panel-group">
+              <div class="section-label">Scapes & Tools</div>
+              <div id="tool-actions" class="tool-section"></div>
+            </section>
+            <section class="panel-group">
+              <div class="section-label">Lighting</div>
+              <div id="lighting-tools" class="tool-section"></div>
+              <div class="slider-row compact">
+                <span>Pos</span>
+                <input id="light-x-control" type="range" min="0" max="100" step="1" value="52" />
+              </div>
+              <div class="slider-row compact">
+                <span>Power</span>
+                <input id="light-intensity-control" type="range" min="35" max="140" step="5" value="100" />
+              </div>
+            </section>
+            <section class="panel-group">
+              <div class="section-label">Background</div>
+              <div id="background-tools" class="tool-section"></div>
+            </section>
+          </section>
+
+          <section id="workspace-assets" class="workspace-pane" aria-label="Asset Library">
+            <div class="panel-title">Asset Library</div>
+            <section class="panel-group">
+              <div class="menu-tabs" role="tablist" aria-label="Asset category">
+                <button class="menu-tab active" data-tab="hardscape" type="button">Hardscape</button>
+                <button class="menu-tab" data-tab="plants" type="button">Plants</button>
+              </div>
+              <div id="hardscape-panel" class="tab-panel active">
+                <div id="hardscape-tools" class="tool-grid"></div>
+              </div>
+              <div id="plants-panel" class="tab-panel">
+                <div id="plant-tools" class="tool-grid"></div>
+              </div>
+            </section>
+          </section>
+
+          <section id="workspace-selected" class="workspace-pane" aria-label="Selected Asset">
+            <div class="panel-title">Selected Asset</div>
+            <section id="asset-inspector" class="panel-group inspector disabled">
+              <div class="inspector-title">No asset selected</div>
+              <div class="control-row">
+                <button data-action="rotate-left" title="Rotate left">Left</button>
+                <button data-action="rotate-right" title="Rotate right">Right</button>
+                <button data-action="flip" title="Flip horizontally">Flip</button>
+                <button data-action="delete" class="danger" title="Delete selected">Del</button>
+              </div>
+              <div class="control-row">
+                <button data-action="depth-back" title="Move to background">Back</button>
+                <button data-action="depth-mid" title="Move to middleground">Mid</button>
+                <button data-action="depth-front" title="Move to foreground">Front</button>
+              </div>
+              <label class="slider-row">
+                <span>Scale</span>
+                <input id="scale-control" type="range" min="50" max="140" step="5" value="100" />
+              </label>
+              <div class="hint">Drag selected assets. Q/E rotate. +/- scale. Delete removes.</div>
+            </section>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="hud">
+    <span id="hud-shrimp">🦐 —</span>
+    <span id="hud-day">Day —</span>
+    <span id="hud-time">—:——</span>
+    <span id="hud-legend"></span>
+    <span id="hud-perf" hidden>FPS --</span>
+  </div>
+
+  <div id="scape-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="scape-modal-title">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card">
+      <div id="scape-modal-title" class="modal-title">Choose Aquascape Style</div>
+      <div class="modal-sub">Iwagumi and Nature presets are tuned for clean pro-style composition.</div>
+      <div id="scape-presets" class="preset-grid"></div>
+      <button id="scape-modal-cancel" class="modal-cancel" type="button" hidden>Cancel</button>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js?v=13"></script>
+</body>
+</html>

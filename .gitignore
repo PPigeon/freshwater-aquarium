@@ -1,0 +1,28 @@
+# Reference photos (source material, regeneratable via photo_sourcer.py)
+references/
+
+# Pipeline intermediates (rembg output, per-stage debug images)
+_intermediates/
+
+# Sourcer outputs
+_sourcer_report.json
+_sourcer_gallery.html
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
