@@ -2,11 +2,11 @@ import {
   Application, Container, ColorMatrixFilter, Point,
 } from 'pixi.js';
 import { GW, GH, clamp } from './constants.js';
-import { Atmosphere } from './atmosphere.js?v=18';
-import { PlacedView } from './scape/placedView.js?v=18';
+import { Atmosphere } from './atmosphere.js?v=19';
+import { PlacedView } from './scape/placedView.js?v=19';
 import { CreatureLayer } from './creatures/creatureLayer.js';
-import { ParticleLayer } from './particles.js?v=18';
-import { loadArtRegistry } from './art/registry.js?v=18';
+import { ParticleLayer } from './particles.js?v=19';
+import { loadArtRegistry } from './art/registry.js?v=19';
 
 // PixiStage owns the WebGL Application, the world transform (grid-units -> screen),
 // the ordered layer stack, and all rendering subsystems. main.js talks to it
