@@ -78,11 +78,14 @@ export class Atmosphere {
       this.roomBg = null;
     }
 
-    // Solid base colour (tinted per background mode).
+    // Solid base colour — at 0.82 alpha to let room_bg show through faintly.
+    // The room_bg is a dark digitized fish room; the tinted fill above it adds
+    // the deep-blue water cast while keeping the room visible as depth reference.
     this.baseFill = fullSprite(Texture.WHITE, GW - BEZEL_SIDE * 2, SUBSTRATE_Y - WATERLINE_Y);
     this.baseFill.x = BEZEL_SIDE;
     this.baseFill.y = WATERLINE_Y;
     this.baseFill.tint = BG_COLORS.deep_blue;
+    this.baseFill.alpha = 0.82;
     L.addChild(this.baseFill);
 
     // Atlas water tile — bilinear filtered (via registry) for smooth tiling.
@@ -136,7 +139,7 @@ export class Atmosphere {
     // Multiply blend + low alpha gives organic variation without a visible grid.
     const grain = new TilingSprite({ texture: grainTile(96, 0.55, true), width: GW, height: GH - top0 + 6 });
     grain.y = top0 - 6;
-    grain.alpha = 0.10;  // reduced from 0.28 — avoids checkerboard artifact at 5× scale
+    grain.alpha = 0.22;  // organic noise texture to break up substrate into gravel-like variation
     grain.blendMode = 'multiply';
     grain.tileScale.set(0.38);
     soil.addChild(grain);
@@ -151,12 +154,13 @@ export class Atmosphere {
     soil.mask = mask;
     L.addChild(soil);
 
-    // FMV-processed aquasoil texture tile — dominant visual layer.
-    // Bilinear filtered via registry; tileScale 1.0 = 48 world-unit grain size.
-    const substrateTile = this._atlasTiling('substrate_tile', GW, GH - top0 + 8, 1.0);
+    // FMV-processed aquasoil texture tile — subtle grain layer, not dominant.
+    // The gradient body carries the colour; this tile adds micro-texture only.
+    // tileScale 1.6 = coarser grain, less visible grid pattern at 5× world scale.
+    const substrateTile = this._atlasTiling('substrate_tile', GW, GH - top0 + 8, 1.6);
     substrateTile.y = top0 - 4;
-    substrateTile.alpha = 0.82;
-    substrateTile.blendMode = 'normal';
+    substrateTile.alpha = 0.36;
+    substrateTile.blendMode = 'multiply';
     substrateTile.mask = mask;
     L.addChild(substrateTile);
 

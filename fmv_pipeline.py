@@ -99,8 +99,8 @@ SPECS = {
     'plants/salvinia':    {'output': 'plants/floating_salvinia.png', 'frame_w': 56, 'frame_h': 32, 'cols': 1, 'rows': 1, 'num_frames': 1, 'subject_type': 'plant', 'category': 'plant'},
     'plants/redroot':     {'output': 'plants/floating_redroot.png',  'frame_w': 48, 'frame_h': 34, 'cols': 1, 'rows': 1, 'num_frames': 1, 'subject_type': 'plant', 'category': 'plant'},
     # Tall plants — worldSize h=116–118 → tops reach waterline at scale 1.00
-    'plants/amazon_sword': {'output': 'plants/amazon_sword.png', 'frame_w': 52, 'frame_h': 116, 'cols': 1, 'rows': 1, 'num_frames': 1, 'subject_type': 'plant', 'category': 'plant'},
-    'plants/cabomba':      {'output': 'plants/cabomba.png',      'frame_w': 32, 'frame_h': 118, 'cols': 1, 'rows': 1, 'num_frames': 1, 'subject_type': 'plant', 'category': 'plant'},
+    'plants/amazon_sword': {'output': 'plants/amazon_sword.png', 'frame_w': 56, 'frame_h': 56,  'cols': 1, 'rows': 1, 'num_frames': 1, 'subject_type': 'plant', 'category': 'plant'},
+    'plants/cabomba':      {'output': 'plants/cabomba.png',      'frame_w': 32, 'frame_h': 64,  'cols': 1, 'rows': 1, 'num_frames': 1, 'subject_type': 'plant', 'category': 'plant'},
     'plants/ludwigia':     {'output': 'plants/ludwigia.png',     'frame_w': 28, 'frame_h': 116, 'cols': 1, 'rows': 1, 'num_frames': 1, 'subject_type': 'plant', 'category': 'plant'},
     # Rotala: 3 growth stages side by side in one sheet
     'plants/rotala': {

@@ -61,8 +61,8 @@ export const SCAPE_PRESETS = {
       { id: 'iwa_suteishi3',  key: 'stone_lava',      x: 148, y: Y + 2, scale: 0.60, rotation:   3, flip: true,  depth: 'front' },
       // Tall depth layer (back-most) — scale 1.00 (5×, pixel-perfect); tops reach waterline
       // Cabomba feathery columns flank, with vals between them
-      { id: 'iwa_cab_l',   key: 'cabomba',      x:  18, y: Y, scale: 1.00, rotation: 0, flip: false, depth: 'back' },
-      { id: 'iwa_cab_r',   key: 'cabomba',      x: 254, y: Y, scale: 1.00, rotation: 0, flip: true,  depth: 'back' },
+      { id: 'iwa_cab_l',   key: 'cabomba',      x:  18, y: Y, scale: 1.20, rotation: 0, flip: false, depth: 'back' },
+      { id: 'iwa_cab_r',   key: 'cabomba',      x: 254, y: Y, scale: 1.20, rotation: 0, flip: true,  depth: 'back' },
       // Vallisneria layer at 0.80 (4×) in front of cabomba
       { id: 'iwa_val_l',  key: 'vallisneria', x:  14, y: Y, scale: 0.80, rotation: 0, flip: false, depth: 'back' },
       { id: 'iwa_rot_l1', key: 'vallisneria', x:  32, y: Y, scale: 0.80, rotation: 0, flip: false, depth: 'back' },
@@ -96,13 +96,20 @@ export const SCAPE_PRESETS = {
       { id: 'nat_wood_side',    key: 'wood_redmoor',    x: 200, y: Y + 2, scale: 0.40, rotation:  -9, flip: false, depth: 'mid'   },
       // Extreme-background tall layer — scale 1.00 (5×, pixel-perfect); tops reach waterline.
       // Ludwigia (warm reddish tips) + cabomba (feathery) create COLOUR + TEXTURE depth.
-      { id: 'nat_ludw_l',  key: 'ludwigia',     x:  20, y: Y, scale: 1.00, rotation: 0, flip: false, depth: 'back' },
-      { id: 'nat_ludw_l2', key: 'ludwigia',     x:  36, y: Y, scale: 1.00, rotation: 0, flip: true,  depth: 'back' },
-      { id: 'nat_cab_l',   key: 'cabomba',      x:   8, y: Y, scale: 1.00, rotation: 0, flip: false, depth: 'back' },
-      { id: 'nat_cab_r',   key: 'cabomba',      x: 266, y: Y, scale: 1.00, rotation: 0, flip: true,  depth: 'back' },
-      { id: 'nat_ludw_r',  key: 'ludwigia',     x: 250, y: Y, scale: 1.00, rotation: 0, flip: true,  depth: 'back' },
+      // Left cluster: cabomba + dense ludwigia group
+      { id: 'nat_cab_l',   key: 'cabomba',      x:   6, y: Y, scale: 1.20, rotation: 0, flip: false, depth: 'back' },
+      { id: 'nat_ludw_l',  key: 'ludwigia',     x:  18, y: Y, scale: 1.00, rotation: 0, flip: false, depth: 'back' },
+      { id: 'nat_ludw_l2', key: 'ludwigia',     x:  28, y: Y, scale: 1.00, rotation: 0, flip: true,  depth: 'back' },
+      { id: 'nat_ludw_l3', key: 'ludwigia',     x:  38, y: Y, scale: 1.00, rotation: 0, flip: false, depth: 'back' },
+      { id: 'nat_ludw_l4', key: 'ludwigia',     x:  46, y: Y, scale: 0.80, rotation: 0, flip: true,  depth: 'back' },
+      // Right cluster: mirror dense ludwigia + cabomba
+      { id: 'nat_ludw_r',  key: 'ludwigia',     x: 244, y: Y, scale: 1.00, rotation: 0, flip: true,  depth: 'back' },
+      { id: 'nat_ludw_r2', key: 'ludwigia',     x: 254, y: Y, scale: 1.00, rotation: 0, flip: false, depth: 'back' },
+      { id: 'nat_ludw_r3', key: 'ludwigia',     x: 264, y: Y, scale: 0.80, rotation: 0, flip: true,  depth: 'back' },
+      { id: 'nat_cab_r',   key: 'cabomba',      x: 270, y: Y, scale: 1.20, rotation: 0, flip: true,  depth: 'back' },
       // Amazon sword — large mid-back focal plant, left of centre
-      { id: 'nat_sword',   key: 'amazon_sword', x:  88, y: Y, scale: 1.00, rotation: 0, flip: false, depth: 'back' },
+      { id: 'nat_sword',   key: 'amazon_sword', x:  88, y: Y, scale: 1.40, rotation: 0, flip: false, depth: 'back' },
+      { id: 'nat_sword2',  key: 'amazon_sword', x: 108, y: Y, scale: 1.20, rotation: 0, flip: true,  depth: 'back' },
       // Vallisneria layer at 0.80 (4×) filling the background
       { id: 'nat_rot_l1',    key: 'vallisneria', x:  52, y: Y, scale: 0.80, rotation: 0, flip: false, depth: 'back' },
       { id: 'nat_rot_l2',    key: 'vallisneria', x:  68, y: Y, scale: 0.80, rotation: 0, flip: true,  depth: 'back' },
