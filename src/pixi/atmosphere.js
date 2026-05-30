@@ -71,11 +71,10 @@ export class Atmosphere {
   _buildWater() {
     const L = this.layers.waterBack;
 
-    // Room background: sits in the bezel layer behind everything,
-    // visible at the edges when zoomed out. Only added if the asset loaded.
+    // Room background belongs behind the water, never over the planted tank.
     try {
       this.roomBg = this._atlasSprite('room_bg', GW, GH, 1.0);
-      this.layers.bezel.addChildAt(this.roomBg, 0);
+      L.addChildAt(this.roomBg, 0);
     } catch (_) {
       this.roomBg = null; // Asset not yet generated — silently skip
     }

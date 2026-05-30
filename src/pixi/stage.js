@@ -2,7 +2,7 @@ import {
   Application, Container, ColorMatrixFilter, Point,
 } from 'pixi.js';
 import { GW, GH, clamp } from './constants.js';
-import { Atmosphere } from './atmosphere.js?v=19';
+import { Atmosphere } from './atmosphere.js?v=21';
 import { PlacedView } from './scape/placedView.js?v=19';
 import { CreatureLayer } from './creatures/creatureLayer.js';
 import { ParticleLayer } from './particles.js?v=19';
