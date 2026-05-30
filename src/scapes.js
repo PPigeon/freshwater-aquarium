@@ -148,7 +148,7 @@ export const SCAPE_PRESETS = {
     blurb: 'Balanced hardscape scale with dense planting and moderate shrimp lanes.',
     reviewOnly: true,
     assets: [
-      { id: 'b_wood_l', key: 'wood_manzanita', x: 102, y: Y + 1, scale: 0.33, rotation: -8, flip: false, depth: 'mid' },
+      { id: 'b_wood_l', key: 'wood_manzanita', x: 104, y: Y + 1, scale: 0.31, rotation: -8, flip: false, depth: 'mid' },
       { id: 'b_wood_r', key: 'wood_redmoor', x: 190, y: Y + 2, scale: 0.28, rotation: -7, flip: true, depth: 'back' },
       { id: 'b_stone_l', key: 'stone_seiryu_lg', x: 66, y: Y, scale: 0.68, rotation: -5, flip: false, depth: 'mid' },
       { id: 'b_stone_c', key: 'stone_dragon', x: 142, y: Y + 1, scale: 0.54, rotation: 6, flip: true, depth: 'front' },
@@ -175,9 +175,9 @@ export const SCAPE_PRESETS = {
     blurb: 'Maximum planted fullness with minimized hardscape and richer foreground foliage.',
     reviewOnly: true,
     assets: [
-      { id: 'l_wood_l', key: 'wood_manzanita', x: 104, y: Y + 1, scale: 0.30, rotation: -8, flip: false, depth: 'mid' },
+      { id: 'l_wood_l', key: 'wood_manzanita', x: 108, y: Y + 1, scale: 0.27, rotation: -8, flip: false, depth: 'mid' },
       { id: 'l_stone_l', key: 'stone_seiryu_lg', x: 70, y: Y, scale: 0.62, rotation: -5, flip: false, depth: 'mid' },
-      { id: 'l_stone_c', key: 'stone_dragon', x: 142, y: Y + 1, scale: 0.48, rotation: 6, flip: true, depth: 'front' },
+      { id: 'l_stone_c', key: 'stone_dragon', x: 148, y: Y + 1, scale: 0.43, rotation: 6, flip: true, depth: 'front' },
       { id: 'l_rot_1', key: 'rotala_full', x: 12, y: Y, scale: 0.98, rotation: 0, flip: false, depth: 'back' },
       { id: 'l_rot_2', key: 'rotala_full', x: 26, y: Y, scale: 0.96, rotation: 0, flip: true, depth: 'back' },
       { id: 'l_rot_3', key: 'rotala_mid', x: 40, y: Y, scale: 0.94, rotation: 0, flip: false, depth: 'back' },
@@ -195,8 +195,8 @@ export const SCAPE_PRESETS = {
       { id: 'l_anubias_2', key: 'anubias', x: 228, y: Y + 1, scale: 0.62, rotation: 1, flip: true, depth: 'front' },
       { id: 'l_buce_1', key: 'buce', x: 126, y: Y + 1, scale: 0.64, rotation: 0, flip: true, depth: 'front' },
       { id: 'l_moss_1', key: 'moss', x: 174, y: Y + 1, scale: 0.60, rotation: 0, flip: false, depth: 'front' },
-      { id: 'l_float_1', key: 'floating_salvinia', x: 58, y: 16, scale: 0.86, rotation: 0, flip: false, depth: 'front' },
-      { id: 'l_float_2', key: 'floating_redroot', x: 140, y: 16, scale: 0.84, rotation: 0, flip: true, depth: 'front' },
+      { id: 'l_float_1', key: 'floating_salvinia', x: 70, y: 16, scale: 0.62, rotation: 0, flip: false, depth: 'front' },
+      { id: 'l_float_2', key: 'floating_redroot', x: 164, y: 16, scale: 0.66, rotation: 0, flip: true, depth: 'front' },
     ],
   },
 
