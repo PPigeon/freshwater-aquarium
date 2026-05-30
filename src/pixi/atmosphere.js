@@ -154,15 +154,15 @@ export class Atmosphere {
     soil.mask = mask;
     L.addChild(soil);
 
-    // FMV-processed aquasoil texture tile — subtle grain layer, not dominant.
-    // The gradient body carries the colour; this tile adds micro-texture only.
-    // tileScale 1.6 = coarser grain, less visible grid pattern at 5× world scale.
-    const substrateTile = this._atlasTiling('substrate_tile', GW, GH - top0 + 8, 1.6);
-    substrateTile.y = top0 - 4;
-    substrateTile.alpha = 0.36;
-    substrateTile.blendMode = 'multiply';
-    substrateTile.mask = mask;
-    L.addChild(substrateTile);
+    // Second grain pass — coarser, lighter speckle — for visible gravel chunks.
+    // Replaces the substrate.png tile which had an artifact grid at game scale.
+    const grain2 = new TilingSprite({ texture: grainTile(64, 0.30, false), width: GW, height: GH - top0 + 8 });
+    grain2.y = top0 - 6;
+    grain2.alpha = 0.09;
+    grain2.blendMode = 'add';
+    grain2.tileScale.set(0.70);
+    grain2.mask = mask;
+    L.addChild(grain2);
 
     // Top edge: thin warm highlight (grains catching light from above)
     const rim = new Graphics();
