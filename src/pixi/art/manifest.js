@@ -140,8 +140,8 @@ const BACKGROUND = {
     layer: 'background',
     atlasPath: 'assets/sprites/background/substrate.png',
     anchor: [0, 0],
-    worldSize: { w: 24, h: 24 },
-    frameGrid: { rows: 1, cols: 1, frameW: 24, frameH: 24 },
+    worldSize: { w: 48, h: 48 },
+    frameGrid: { rows: 1, cols: 1, frameW: 48, frameH: 48 },
     animTags: { tileable: true },
   }),
   caustics_tile: withContract({

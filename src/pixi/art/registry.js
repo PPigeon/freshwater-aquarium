@@ -133,14 +133,19 @@ function checkAlphaEdges(entry, imageData, w, h) {
   }
 }
 
-function frameTexture(image, frame) {
+function frameTexture(image, frame, nearest = true) {
   const c = document.createElement('canvas');
   c.width = frame.w;
   c.height = frame.h;
   const ctx = c.getContext('2d');
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(image, frame.x, frame.y, frame.w, frame.h, 0, 0, frame.w, frame.h);
-  return setNearest(Texture.from(c));
+  const tex = Texture.from(c);
+  // Background-layer fill textures (water tile, substrate, caustics, etc.) use
+  // bilinear filtering so they upscale smoothly without the large pixel-block
+  // artefacts that nearest-neighbour creates at 5× world scale.  Creature sprites
+  // and hardscape/plant art keep nearest so their pixel silhouettes stay crisp.
+  return nearest ? setNearest(tex) : tex;
 }
 
 async function loadEntry(raw) {
@@ -160,19 +165,23 @@ async function loadEntry(raw) {
   pctx.drawImage(image, 0, 0);
   checkAlphaEdges(entry, pctx.getImageData(0, 0, image.width, image.height).data, image.width, image.height);
 
+  // Background-layer entries upscale smoothly with bilinear; everything else
+  // (creatures, plants, hardscape) uses nearest for crisp pixel silhouettes.
+  const useNearest = entry.layer !== 'background';
+
   if (entry.sourceRect) {
     const r = entry.sourceRect;
     if (r.x < 0 || r.y < 0 || r.w < 1 || r.h < 1 || r.x + r.w > image.width || r.y + r.h > image.height) {
       throw new Error(`[Art Atlas] ${entry.key}: invalid sourceRect ${JSON.stringify(r)} for ${image.width}x${image.height}.`);
     }
-    return { entry, frames: [[frameTexture(image, r)]] };
+    return { entry, frames: [[frameTexture(image, r, useNearest)]] };
   }
 
   const out = [];
   for (let row = 0; row < frames.length; row++) {
     out[row] = [];
     for (let col = 0; col < frames[row].length; col++) {
-      out[row][col] = frameTexture(image, frames[row][col]);
+      out[row][col] = frameTexture(image, frames[row][col], useNearest);
     }
   }
   return { entry, frames: out };

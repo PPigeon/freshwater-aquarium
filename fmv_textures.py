@@ -107,54 +107,66 @@ def save(img: Image.Image, name: str) -> None:
 def make_substrate() -> None:
     """
     ADA Amazonia-style aquasoil: very dark brown-black granular substrate.
-    Generates a tileable 24×24 grain texture then applies full VGA treatment.
+    Generates a tileable 48×48 tile (larger → less obvious tiling seams) then
+    applies full VGA treatment.  Grain size and colour distribution calibrated
+    to match real ADA Amazonia substrate when tiled and lit from above.
     """
     rng  = random.Random(42)
-    SIZE = 24
+    SIZE = 48   # larger tile = seams less obvious at display scale
 
-    # Base colours — dark earthy browns / near-blacks
+    # Base colours — dark earthy browns / near-blacks (ADA Amazonia palette)
     GRAIN_COLORS = [
-        (16,  9,  4),   # very dark brown-black
-        (22, 13,  6),   # dark umber
-        (28, 17,  8),   # medium-dark brown
-        (34, 21, 10),   # warm dark brown
-        (20, 11,  5),   # cooler very dark
-        (12,  7,  3),   # near black
-        (38, 24, 12),   # slightly lighter grain edge
-        (24, 15,  7),
+        (14,  8,  3),   # very dark brown-black (dominant base)
+        (20, 12,  5),   # dark umber
+        (28, 17,  7),   # medium-dark brown
+        (36, 23, 10),   # warm dark brown
+        (18, 10,  4),   # cooler very dark
+        (10,  6,  2),   # near-black (shadow gaps)
+        (42, 27, 13),   # lighter grain highlight (surface catch)
+        (32, 19,  8),   # mid warm brown
+        (24, 14,  6),   # neutral dark
+        (46, 30, 15),   # brightest grain (rarely used)
     ]
 
     arr = np.zeros((SIZE, SIZE, 3), dtype=np.uint8)
 
-    # Fill with the darkest tone as base
+    # Base fill: the darkest tone
     arr[:] = GRAIN_COLORS[0]
 
-    # Scatter grain "pebbles" — small ellipses with colour variation
-    for _ in range(120):
+    # Scatter grain "pebbles" — small ellipses, varied sizes for organic feel
+    # More grains than the 24×24 version to keep density consistent per area
+    for _ in range(420):
         cx = rng.uniform(0, SIZE)
         cy = rng.uniform(0, SIZE)
-        rx = rng.uniform(0.6, 1.8)
-        ry = rng.uniform(0.5, 1.4)
-        col = rng.choice(GRAIN_COLORS)
+        # Grain size: most are tiny (0.8–2px), occasional larger boulder grain
+        large = rng.random() < 0.08
+        rx = rng.uniform(1.2, 3.2) if large else rng.uniform(0.6, 1.6)
+        ry = rng.uniform(0.9, 2.4) if large else rng.uniform(0.5, 1.3)
+        col = rng.choice(GRAIN_COLORS[:8])  # avoid the very bright highlights
 
-        for dy in range(-3, 4):
-            for dx in range(-3, 4):
+        for dy in range(-4, 5):
+            for dx in range(-4, 5):
                 px = int(cx + dx) % SIZE
                 py = int(cy + dy) % SIZE
                 if ((dx / rx) ** 2 + (dy / ry) ** 2) <= 1.0:
-                    # Add tiny per-pixel brightness jitter for organic feel
-                    jitter = rng.randint(-5, 5)
+                    jitter = rng.randint(-6, 6)
                     c = tuple(max(0, min(255, v + jitter)) for v in col)
                     arr[py, px] = c
 
-    # Add subtle inter-grain gaps (even darker) for depth
-    for _ in range(30):
+    # Occasional bright grain highlights (top of grain catching LED light)
+    for _ in range(24):
         gx = rng.randint(0, SIZE - 1)
         gy = rng.randint(0, SIZE - 1)
-        arr[gy, gx] = (8, 4, 2)
+        arr[gy, gx] = rng.choice(GRAIN_COLORS[6:])
+
+    # Shadow gaps between grains (the darkest pixels)
+    for _ in range(80):
+        gx = rng.randint(0, SIZE - 1)
+        gy = rng.randint(0, SIZE - 1)
+        arr[gy, gx] = (6, 3, 1)
 
     img = Image.fromarray(arr, 'RGB')
-    img = fmv_post(img, dither_t=0.22)   # slightly heavier dither for texture
+    img = fmv_post(img, dither_t=0.24)   # heavier dither for granular texture
     save(img, 'substrate.png')
 
 

@@ -27,8 +27,6 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageFilter, ImageEnhance
-import hitherdither
-import imagequant
 from rembg import remove, new_session
 
 PYTHON = sys.executable
@@ -36,7 +34,22 @@ PROJECT_ROOT = Path(__file__).parent
 REFERENCES   = PROJECT_ROOT / 'references'
 INTERMEDIATES = PROJECT_ROOT / '_intermediates'
 OUTPUT_ROOT  = PROJECT_ROOT / 'assets' / 'sprites'
-PALETTE_CACHE = INTERMEDIATES / '_palette.json'
+PALETTE_CACHE = INTERMEDIATES / '_palette.json'  # legacy — removed on startup
+
+# ── 8×8 Bayer matrix for ordered dithering ─────────────────────────────────
+# Used by stage7_bayer_dither.  Palette-free: displaces each pixel by the
+# matrix value then re-snaps to the VGA 6-bit grid.  This is how VGA hardware
+# ordered dithering actually worked — no predefined colour table required.
+BAYER8 = np.array([
+    [ 0, 32,  8, 40,  2, 34, 10, 42],
+    [48, 16, 56, 24, 50, 18, 58, 26],
+    [12, 44,  4, 36, 14, 46,  6, 38],
+    [60, 28, 52, 20, 62, 30, 54, 22],
+    [ 3, 35, 11, 43,  1, 33,  9, 41],
+    [51, 19, 59, 27, 49, 17, 57, 25],
+    [15, 47,  7, 39, 13, 45,  5, 37],
+    [63, 31, 55, 23, 61, 29, 53, 21],
+], dtype=np.float32) / 64.0   # normalised 0..1
 
 # ──────────────────────────────────────────────────────────────────────────────
 # MANIFEST SPECS
@@ -323,61 +336,8 @@ def stage3_generate_frames(img_rgba_intermediate, spec, subject_key):
 
     return frames
 
-# ──────────────────────────────────────────────────────────────────────────────
-# PALETTE BUILDING (global, run once across all subjects)
-# ──────────────────────────────────────────────────────────────────────────────
-
-_shared_palette_colors = None   # list of (R,G,B) tuples
-_hither_palette = None
-
-def build_or_load_palette(all_sample_frames):
-    """
-    Build a single 256-color palette from ALL subject frames combined.
-    Composites all samples into one image, quantizes with imagequant to get
-    the optimal shared palette. Caches to _intermediates/_palette.json.
-    """
-    global _shared_palette_colors, _hither_palette
-
-    if PALETTE_CACHE.exists():
-        print("[PALETTE] Loading cached shared palette...")
-        with open(PALETTE_CACHE) as f:
-            data = json.load(f)
-        _shared_palette_colors = [tuple(c) for c in data['colors']]
-    elif all_sample_frames:
-        print(f"[PALETTE] Building shared palette from {len(all_sample_frames)} sample frames...")
-
-        # Composite all sample images side by side and quantize as one image
-        # so all subjects share the same optimal 256-color palette
-        max_h = max(img.size[1] for img in all_sample_frames)
-        total_w = sum(img.size[0] for img in all_sample_frames)
-        composite = Image.new('RGBA', (total_w, max_h), (0, 0, 0, 0))
-        x = 0
-        for img in all_sample_frames:
-            composite.paste(img.convert('RGBA'), (x, 0))
-            x += img.size[0]
-
-        # imagequant derives the optimal 256-color palette from the composite
-        quantized = imagequant.quantize_pil_image(
-            composite, dithering_level=0.0, max_colors=256, min_quality=60, max_quality=100
-        )
-        flat = quantized.getpalette()  # flat R,G,B list of 768 values
-        _shared_palette_colors = [(flat[i*3], flat[i*3+1], flat[i*3+2]) for i in range(256)]
-
-        with open(PALETTE_CACHE, 'w') as f:
-            json.dump({'colors': _shared_palette_colors}, f)
-        print(f"[PALETTE] Built {len(_shared_palette_colors)}-color shared palette. Cached.")
-    else:
-        raise RuntimeError("No sample frames provided and no cached palette found.")
-
-    _hither_palette = hitherdither.palette.Palette(
-        [c[0] << 16 | c[1] << 8 | c[2] for c in _shared_palette_colors]
-    )
-    print(f"[PALETTE] Palette ready ({len(_shared_palette_colors)} colors)")
-
-def get_palette():
-    if _shared_palette_colors is None:
-        raise RuntimeError("Palette not built yet. Call build_or_load_palette() first.")
-    return _shared_palette_colors, _hither_palette
+# (palette-based dithering removed — direct Bayer threshold dithering is used
+#  instead.  No shared palette is built or loaded.)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # STAGE 5: VGA 6-BIT CHANNEL QUANTIZATION
@@ -394,38 +354,92 @@ def stage5_vga_quantize(img_rgb):
 # STAGE 6: WARM DESATURATION (consumer camcorder color grade)
 # ──────────────────────────────────────────────────────────────────────────────
 
-def stage6_vhs_grade(img_rgb, background=False):
-    """Simulate consumer camcorder color science circa 1992."""
+def stage6_vhs_grade(img_rgb, subject_type='sprite', background=False):
+    """
+    Per-type colour grade simulating consumer camcorder / video capture science.
+
+    - shrimp / fish  : warm shift (+4% R, −5% B), 12% desaturation, 12% contrast
+    - hardscape      : neutral — preserve natural stone/wood hues; just slight
+                       desaturation + contrast.  No warm push (stones are grey/
+                       blue-grey; driftwood is brown-ochre — not salmon).
+    - plant          : near-neutral — 1% warm push only; preserve green and red
+                       tones that make stem plants and mosses legible.
+    - background     : heavy dark grade matching FMV game scene panels.
+    """
     arr = np.array(img_rgb, dtype=np.float32) / 255.0
-    # Warm color matrix: boost reds 4%, pull blues 5%
+
+    if background:
+        warm = np.array([[1.03, 0.00, 0.00],
+                         [0.00, 1.00, 0.00],
+                         [0.00, -0.02, 0.97]])
+        arr = np.einsum('...j,kj->...k', arr, warm).clip(0, 1)
+        img_w = Image.fromarray((arr * 255).astype(np.uint8), 'RGB')
+        img_w = ImageEnhance.Color(img_w).enhance(0.75)
+        img_w = ImageEnhance.Contrast(img_w).enhance(1.25)
+        img_w = ImageEnhance.Brightness(img_w).enhance(0.55)
+        return img_w
+
+    if subject_type == 'hardscape':
+        # Neutral grade: no warm shift, preserve the grey/brown/ochre palette
+        # that makes stone and driftwood look natural.
+        img_w = Image.fromarray((arr * 255).astype(np.uint8), 'RGB')
+        img_w = ImageEnhance.Color(img_w).enhance(0.90)    # slight desaturation
+        img_w = ImageEnhance.Contrast(img_w).enhance(1.10) # pop the surface detail
+        return img_w
+
+    if subject_type in ('plant', 'plant_multi'):
+        # Near-neutral: preserve green and red hues of stem plants/mosses.
+        warm = np.array([[1.01, 0.00, 0.00],
+                         [0.00, 1.00, 0.00],
+                         [0.00, 0.00, 0.99]])
+        arr = np.einsum('...j,kj->...k', arr, warm).clip(0, 1)
+        img_w = Image.fromarray((arr * 255).astype(np.uint8), 'RGB')
+        img_w = ImageEnhance.Color(img_w).enhance(0.95)    # minimal desaturation
+        img_w = ImageEnhance.Contrast(img_w).enhance(1.06)
+        return img_w
+
+    # shrimp / fish / generic sprite — full 90s camcorder warm grade
     warm = np.array([[1.04, 0.00,  0.00],
                      [0.00, 1.00,  0.00],
                      [0.00, -0.04, 0.95]])
     arr = np.einsum('...j,kj->...k', arr, warm).clip(0, 1)
-    img_warm = Image.fromarray((arr * 255).astype(np.uint8), 'RGB')
-    # Desaturate 12% (video chroma is lower bandwidth than luma)
-    img_warm = ImageEnhance.Color(img_warm).enhance(0.88 if not background else 0.75)
-    # Contrast boost
-    img_warm = ImageEnhance.Contrast(img_warm).enhance(1.12 if not background else 1.25)
-    if background:
-        # Darken backgrounds significantly — FMV backgrounds were always darker than actors
-        img_warm = ImageEnhance.Brightness(img_warm).enhance(0.55)
-    return img_warm
+    img_w = Image.fromarray((arr * 255).astype(np.uint8), 'RGB')
+    img_w = ImageEnhance.Color(img_w).enhance(0.88)
+    img_w = ImageEnhance.Contrast(img_w).enhance(1.12)
+    return img_w
 
 # ──────────────────────────────────────────────────────────────────────────────
 # STAGE 7: BAYER ORDERED DITHERING
 # ──────────────────────────────────────────────────────────────────────────────
 
-def stage7_bayer_dither(img_rgb):
-    """Apply 8x8 Bayer ordered dithering to the shared VGA palette."""
-    _, palette = get_palette()
-    # Threshold 256/6 ≈ 42 — less aggressive than the original 64.
-    # Keeps visible dithering grain (authentic FMV) while preserving
-    # enough colour fidelity that subjects are clearly readable at sprite size.
-    dithered = hitherdither.ordered.bayer.bayer_dithering(
-        img_rgb, palette, [256 / 6, 256 / 6, 256 / 6], order=8
-    )
-    return dithered.convert('RGB')
+def stage7_bayer_dither(img_rgb, threshold=10.0):
+    """
+    Direct 8×8 Bayer threshold dithering — no shared palette required.
+
+    Displaces each pixel by the Bayer matrix value then re-snaps to the VGA
+    6-bit grid.  This is how actual VGA hardware ordered dithering worked: the
+    matrix offsets the quantisation threshold per pixel to simulate intermediate
+    tones without mapping to a predefined colour table.
+
+    Removing the shared-palette step is critical: palette-derived dithering
+    maps ALL subjects to the nearest palette colour, which causes hue
+    contamination when the palette is skewed by one vivid subject type
+    (e.g. red cherry shrimp polluting the colours of grey stone).
+
+    threshold : displacement amplitude in 0–255 units.
+                10 = clearly visible Bayer grain, fidelity still good at 5×
+                     intermediate → 1× final downscale ratio.
+    """
+    arr  = np.array(img_rgb, dtype=np.float32)
+    H, W = arr.shape[:2]
+    iy   = np.arange(H) % 8
+    ix   = np.arange(W) % 8
+    mat  = BAYER8[np.ix_(iy, ix)]                     # (H, W) tiled 0..1 pattern
+    displaced = arr + (mat[:, :, np.newaxis] - 0.5) * threshold * 2
+    # Re-snap to VGA 6-bit grid
+    q      = np.round(displaced.clip(0, 255) / 255.0 * 63)
+    result = (q * (255.0 / 63)).clip(0, 255).astype(np.uint8)
+    return Image.fromarray(result, 'RGB')
 
 # ──────────────────────────────────────────────────────────────────────────────
 # STAGE 8: CINEPAK BLOCK QUANTIZATION (4x4 block V1 codebook simulation)
@@ -439,7 +453,7 @@ def stage8_cinepak_blocks(img_rgb):
         for bx in range(0, W, 4):
             block = arr[by:by+4, bx:bx+4]
             mean = block.mean(axis=(0, 1), keepdims=True)
-            arr[by:by+4, bx:bx+4] = block * 0.85 + mean * 0.15
+            arr[by:by+4, bx:bx+4] = block * 0.95 + mean * 0.05   # 5% pull (was 15%)
     return Image.fromarray(arr.clip(0, 255).astype(np.uint8), 'RGB')
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -578,8 +592,8 @@ def process_frame(img_rgba_intermediate, frame_w, frame_h, subject_type='sprite'
     # Stage 5: VGA 6-bit quantization
     img_rgb = stage5_vga_quantize(img_rgb)
 
-    # Stage 6: Warm VHS color grade
-    img_rgb = stage6_vhs_grade(img_rgb, background=is_background)
+    # Stage 6: Per-type colour grade (preserves hue fidelity for non-creature subjects)
+    img_rgb = stage6_vhs_grade(img_rgb, subject_type=subject_type, background=is_background)
 
     # Stage 7: Bayer dithering to shared palette
     img_rgb = stage7_bayer_dither(img_rgb)
@@ -598,6 +612,13 @@ def process_frame(img_rgba_intermediate, frame_w, frame_h, subject_type='sprite'
 
     # Stage 11: Downscale to game resolution
     result_rgba = stage11_downscale(result_rgba, frame_w, frame_h)
+
+    # Stage 11b: Final micro-sharpen — recovers detail lost in LANCZOS downscale
+    # and gives the crisp-edge quality of digitised FMV sprites.
+    if not is_background:
+        rgb_s, alpha_s = split_alpha(result_rgba)
+        rgb_s = ImageEnhance.Sharpness(rgb_s).enhance(1.55)
+        result_rgba = merge_alpha(rgb_s, alpha_s)
 
     return result_rgba
 
@@ -680,34 +701,6 @@ def process_subject(subject_key, spec, dry_run=False):
     print(f"  [S12] OK {sheet.width}x{sheet.height}px sprite sheet -> {output_path}")
     return processed_frames
 
-# ──────────────────────────────────────────────────────────────────────────────
-# PALETTE COLLECTION PASS
-# ──────────────────────────────────────────────────────────────────────────────
-
-def collect_palette_samples(subject_list):
-    """
-    First pass: collect intermediate frames from all subjects for palette building.
-    Only collects; does not apply digitization.
-    """
-    samples = []
-    for subject_key, spec in subject_list:
-        ref_images = find_reference_images(subject_key, spec)
-        if not ref_images:
-            continue
-        source_path = ref_images[0]
-        out_dir = subject_intermediate_dir(subject_key)
-
-        try:
-            img_rgba = stage1_remove_background(source_path, out_dir, subject_key)
-            img_rgba = stage2_resize_intermediate(img_rgba, spec)
-            img_rgb, _ = split_alpha(img_rgba)
-            img_rgb = stage5_vga_quantize(img_rgb)
-            img_rgb = stage6_vhs_grade(img_rgb)
-            samples.append(img_rgb)
-        except Exception as e:
-            print(f"  WARN Sample collection failed for {subject_key}: {e}")
-
-    return samples
 
 # ──────────────────────────────────────────────────────────────────────────────
 # MAIN
@@ -717,8 +710,6 @@ def main():
     parser = argparse.ArgumentParser(description='FMV Sprite Digitization Pipeline')
     parser.add_argument('--dry', action='store_true', help='Dry run: show what would be processed')
     parser.add_argument('--subject', type=str, help='Process only this subject key (e.g. shrimp/red_cherry/male)')
-    parser.add_argument('--palette-only', action='store_true', help='Rebuild palette cache only')
-    parser.add_argument('--no-palette-cache', action='store_true', help='Force palette rebuild')
     args = parser.parse_args()
 
     # Ensure output directories exist
@@ -744,6 +735,12 @@ def main():
     print(f"Output root:     {OUTPUT_ROOT}")
     print()
 
+    # Remove legacy palette cache — palette-based dithering has been replaced
+    # with direct Bayer threshold dithering, no shared colour table needed.
+    if PALETTE_CACHE.exists():
+        PALETTE_CACHE.unlink()
+        print("[INFO] Removed legacy palette cache (direct Bayer dithering active).")
+
     # Count available references
     available = [(k, v) for k, v in subjects if find_reference_images(k, v)]
     print(f"Subjects with reference photos: {len(available)} / {len(subjects)}")
@@ -763,26 +760,6 @@ def main():
         print("  references/shrimp/red_cherry/photo1.jpg")
         print("  references/plants/java_fern/photo1.jpg")
         print("  references/background/room/photo1.jpg")
-        return
-
-    # PALETTE PASS: collect samples and build shared palette
-    if args.no_palette_cache and PALETTE_CACHE.exists():
-        PALETTE_CACHE.unlink()
-
-    if not PALETTE_CACHE.exists() or args.palette_only:
-        print("\n=== PALETTE COLLECTION PASS ===")
-        print("Collecting samples from all available subjects...")
-        samples = collect_palette_samples(available)
-        if samples:
-            build_or_load_palette(samples)
-        else:
-            print("WARN No samples collected. Cannot build palette.")
-            return
-    else:
-        build_or_load_palette([])  # Load from cache
-
-    if args.palette_only:
-        print("Palette rebuilt. Done.")
         return
 
     # PROCESSING PASS: run full pipeline per subject

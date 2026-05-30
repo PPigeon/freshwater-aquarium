@@ -76,18 +76,19 @@ export class Atmosphere {
     this.baseFill.tint = BG_COLORS.deep_blue;
     L.addChild(this.baseFill);
 
-    // Atlas water tile keeps HD-2D grain sharp under zoom/resize.
-    this.waterTile = this._atlasTiling('water_tile', GW, GH, 1);
-    this.waterTile.alpha = 0.28;
+    // Atlas water tile — bilinear filtered (via registry) for smooth tiling.
+    // Tighter tileScale (0.5) keeps individual tile seams below the eye.
+    this.waterTile = this._atlasTiling('water_tile', GW, GH, 0.5);
+    this.waterTile.alpha = 0.18;
     this.waterTile.blendMode = 'normal';
     L.addChild(this.waterTile);
 
-    // Depth gradient: brighter near the surface, deepening toward the floor.
+    // Depth gradient: darker overall for FMV-era tank mood.
     const grad = verticalGradient(GH, [
-      [0.00, 'rgba(74,152,186,0.50)'],
-      [0.18, 'rgba(40,110,150,0.27)'],
-      [0.55, 'rgba(20,70,110,0.08)'],
-      [1.00, 'rgba(8,30,55,0.0)'],
+      [0.00, 'rgba(55,118,152,0.48)'],
+      [0.22, 'rgba(28,85,120,0.26)'],
+      [0.60, 'rgba(12,50,88,0.10)'],
+      [1.00, 'rgba(4,18,40,0.0)'],
     ]);
     this.waterGrad = fullSprite(grad, GW, GH);
     L.addChild(this.waterGrad);
@@ -164,9 +165,12 @@ export class Atmosphere {
     soil.mask = mask;
     L.addChild(soil);
 
-    const substrateTile = this._atlasTiling('substrate_tile', GW, GH - top0 + 8, 0.5);
+    // FMV-processed aquasoil texture tile (48×48 world units per tile).
+    // Bilinear filtered via registry — scales smoothly without pixel blocks.
+    // tileScale 1.0 = one tile covers 48×48 world units (natural grain size).
+    const substrateTile = this._atlasTiling('substrate_tile', GW, GH - top0 + 8, 1.0);
     substrateTile.y = top0 - 4;
-    substrateTile.alpha = 0.34;
+    substrateTile.alpha = 0.78;   // prominent enough to read as granular aquasoil
     substrateTile.blendMode = 'normal';
     substrateTile.mask = mask;
     L.addChild(substrateTile);
@@ -182,22 +186,10 @@ export class Atmosphere {
     for (const [x, y] of pts) rim2.lineTo(x, y + 1.4);
     rim2.stroke({ width: 1.0, color: 0x2a1d12, alpha: 0.5 });
     L.addChild(rim2);
-
-    const gravel = new Graphics();
-    const palette = [0x17110d, 0x241a13, 0x33251a, 0x4b3928, 0x6a553d];
-    for (let y = top0 + 1; y < GH - 2; y += 4) {
-      const depth = (y - top0) / Math.max(1, GH - top0);
-      for (let x = 2 + ((y / 4) % 2) * 1; x < GW - 2; x += 5) {
-        const n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
-        const r = n - Math.floor(n);
-        const size = r > 0.78 ? 3 : r > 0.38 ? 2 : 1;
-        const lit = y < top0 + 8 && r > 0.45;
-        const idx = lit ? 4 : Math.max(0, Math.min(3, Math.floor((1 - depth) * 3 + r * 1.6)));
-        gravel.rect(x, y + Math.round(r * 1.5), size, size);
-        gravel.fill({ color: palette[idx], alpha: 0.9 });
-      }
-    }
-    L.addChild(gravel);
+    // Note: the old procedural gravel rectangles (1–3 px squares drawn at 4 px
+    // intervals) are intentionally removed.  At 5× world scale they upscaled to
+    // 5–15 px blocks that read as pixel-art rather than FMV digitised soil.
+    // The substrate gradient + FMV tile above provides the correct look.
   }
 
   // ── Caustics ────────────────────────────────────────────────
@@ -333,8 +325,8 @@ export class Atmosphere {
     g.rect(GW - BEZEL_SIDE, BEZEL_TOP, BEZEL_SIDE, innerH);
     g.fill({ color: 0x1c2026 });
 
-    // Rounded outer corners hint
-    g.roundRect(0.5, 0.5, GW - 1, GH - 1, 6);
+    // Hard outer frame — sharp corners for authentic FMV/90s tank aesthetic.
+    g.rect(0.5, 0.5, GW - 1, GH - 1);
     g.stroke({ width: 1.2, color: 0x2c333d, alpha: 0.9 });
 
     // Top edge catch-light
