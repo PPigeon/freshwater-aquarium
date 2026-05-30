@@ -1,6 +1,6 @@
 import { Texture } from 'pixi.js';
-import { MANIFEST } from './manifest.js?v=24';
-import { bakeSheet } from './spriteBaker.js';
+import { MANIFEST } from './manifest.js?v=25';
+import { bakeSheet } from './spriteBaker.js?v=25';
 
 function toAbs(path) {
   try {

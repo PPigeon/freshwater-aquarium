@@ -1,5 +1,5 @@
-import { ASSET_DEFS } from '../assetDefs.js?v=24';
-import { VARIANT_COLORS } from '../../assets.js?v=24';
+import { ASSET_DEFS } from '../assetDefs.js?v=25';
+import { VARIANT_COLORS } from '../../assets.js?v=25';
 
 const hex = (s) => parseInt(s.replace('#', ''), 16);
 
@@ -33,8 +33,8 @@ const PLANT_PAL = {
   vallisneria: { kind: 'grass', base: 0x3f8f46, accent: 0x6fc06a },
   moss: { kind: 'moss', base: 0x3c7d3a, accent: 0x67a85a },
   buce: { kind: 'buce', base: 0x315b42, accent: 0x5e7f56 },
-  stem_wall_lush: { kind: 'stem', base: 0x4f9e36, accent: 0xc6a044 },
-  stem_wall_bronze: { kind: 'stem', base: 0x6f8f38, accent: 0xb7683f },
+  stem_wall_lush: { kind: 'thicket', base: 0x4f9e36, accent: 0xc6a044 },
+  stem_wall_bronze: { kind: 'thicket', base: 0x6f8f38, accent: 0xb7683f },
   floating_salvinia: { kind: 'floating', base: 0x4fae5a, accent: 0x86d77e },
   floating_redroot: { kind: 'floating', base: 0x6aa85a, accent: 0x9a4a3a },
 };

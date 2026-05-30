@@ -1,6 +1,6 @@
 import { Container, Graphics } from 'pixi.js';
-import { ASSET_DEFS } from '../assetDefs.js?v=24';
-import { makePlacedArt, animatePlantArt } from '../art/spriteFactory.js?v=24';
+import { ASSET_DEFS } from '../assetDefs.js?v=25';
+import { makePlacedArt, animatePlantArt } from '../art/spriteFactory.js?v=25';
 
 const FLOATING = new Set(['floating_salvinia', 'floating_redroot']);
 

@@ -342,6 +342,58 @@ function gStem(p, bk, seed) {
   p.outline(darker(bk.base, 0.50));
 }
 
+function gThicket(p, bk, seed) {
+  const rnd = mulberry32(seed);
+  const pal = ramp8(bk.base, 0x071407, 0xecffd8);
+  const acc = ramp8(bk.accent, 0x160c06, 0xffe0a8);
+  const w = p.w, h = p.h, baseY = h - 1;
+
+  // Soft rear mass: irregular plant canopy with many small gaps, not a solid blob.
+  for (let y = 5; y < h - 2; y++) {
+    const t = 1 - y / h;
+    const band = Math.sin(t * Math.PI) * 0.5 + 0.46;
+    const cx = w * (0.50 + Math.sin(t * 7.4 + seed) * 0.08);
+    const half = w * band * (0.28 + 0.18 * t);
+    const l = Math.max(1, Math.round(cx - half + Math.sin(y * 0.21) * 3));
+    const r = Math.min(w - 2, Math.round(cx + half + Math.sin(y * 0.17 + 1.3) * 3));
+    for (let x = l; x <= r; x++) {
+      const edge = Math.min(x - l, r - x) / Math.max(1, (r - l) * 0.5);
+      const keep = edge > 0.08 && ((x + y + seed) % 7 !== 0) && rnd() > 0.10;
+      if (!keep) continue;
+      const col = t > 0.78 ? acc[4] : (t > 0.52 ? pal[5] : (t > 0.24 ? pal[4] : pal[3]));
+      p.set(x, y, col, 175);
+    }
+  }
+
+  // Foreground stems and leaf clusters provide aquarium-plant detail.
+  const stems = 12 + Math.floor(rnd() * 8);
+  for (let i = 0; i < stems; i++) {
+    const x0 = Math.round(4 + rnd() * (w - 8));
+    const top = Math.round(h * (0.10 + rnd() * 0.30));
+    const lean = (rnd() - 0.5) * w * 0.22;
+    const x1 = Math.round(x0 + lean);
+    p.limb(x0, baseY, x1, top, 2.3, 0.8, pal[2 + Math.floor(rnd() * 2)], 220);
+    const leaves = 5 + Math.floor(rnd() * 5);
+    for (let j = 0; j < leaves; j++) {
+      const t = (j + 0.6) / (leaves + 1);
+      const lx = x0 + (x1 - x0) * t + (rnd() - 0.5) * 9;
+      const ly = baseY + (top - baseY) * t + (rnd() - 0.5) * 4;
+      const rx = 3.6 + rnd() * 3.2;
+      const ry = 1.5 + rnd() * 2.2;
+      const col = rnd() < 0.16 ? acc[5] : pal[5 + Math.floor(rnd() * 2)];
+      p.ellipse(lx - 2, ly, rx, ry, col, 220);
+      p.ellipse(lx + 2, ly + 1, rx * 0.85, ry, pal[4], 205);
+    }
+  }
+
+  // Dark roots get buried by the substrate cap but help anchor the clump.
+  for (let i = 0; i < 9; i++) {
+    const x = Math.round(5 + rnd() * (w - 10));
+    p.line(x, baseY, x + Math.round((rnd() - 0.5) * 8), baseY - Math.round(3 + rnd() * 8), pal[1], 160);
+  }
+  p.outline(darker(bk.base, 0.48), 185);
+}
+
 function gGrass(p, bk, seed) {
   // Filled-mass approach: overlapping blades merge into a dense hedge.
   // Individual blade identity comes from vein lines + shading, NOT from gaps.
@@ -849,6 +901,7 @@ function drawFrame(p, entry, row, col, cols, seed) {
     case 'rock':     return gRock(p, bk, seed);
     case 'wood':     return gWood(p, bk, seed);
     case 'stem':     return gStem(p, bk, seed);
+    case 'thicket':  return gThicket(p, bk, seed);
     case 'grass':    return gGrass(p, bk, seed);
     case 'fern':     return gFern(p, bk, seed);
     case 'rosette':  return gRosette(p, bk, seed);
