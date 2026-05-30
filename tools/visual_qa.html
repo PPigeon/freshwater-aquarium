@@ -151,6 +151,7 @@ function analyze(path, group, img) {
   if (group !== 'background' && bboxFill < 0.10) warnings.push('wispy-or-sparse-bbox');
   if (bleed > 6) warnings.push('transparent-edge-rgb');
   if (group === 'hardscape' && edgeTouch > Math.max(12, Math.floor((w + h) * 0.12))) warnings.push('touches-frame-edge');
+  if (path.endsWith('stone_seiryu_sm.png') && contrast < 22) warnings.push('soft-seiryu-sm');
   if ((group === 'shrimp' || group === 'fish') && contrast < 18) warnings.push('low-creature-contrast');
   if ((group === 'hardscape' || group === 'plants') && colors.size > 512) warnings.push('palette-may-read-photographic');
   return {

@@ -177,8 +177,8 @@ def build_subject_list():
     # Small seiryu stone
     SPECS['hardscape/stone_seiryu_sm'] = {
         'output': 'hardscape/stone_seiryu_sm.png',
-        'frame_w': 35, 'frame_h': 24, 'cols': 1, 'rows': 1, 'num_frames': 1,
-        'subject_type': 'hardscape_seiryu', 'category': 'hardscape',
+        'frame_w': 40, 'frame_h': 28, 'cols': 1, 'rows': 1, 'num_frames': 1,
+        'subject_type': 'hardscape_seiryu_sm', 'category': 'hardscape',
         'ref_dir': 'hardscape/stone_seiryu',  # Reuse the same reference
     }
 
@@ -514,7 +514,7 @@ def stage6_vhs_grade(img_rgb, subject_type='sprite', background=False):
         img_w = ImageEnhance.Brightness(img_w).enhance(0.55)
         return img_w
 
-    if subject_type == 'hardscape_seiryu':
+    if subject_type in ('hardscape_seiryu', 'hardscape_seiryu_sm'):
         # Seiryu needs cleaner strata and less VHS breakup than driftwood.
         warm = np.array([[1.00, 0.00, 0.00],
                          [0.00, 1.00, 0.00],
@@ -522,7 +522,7 @@ def stage6_vhs_grade(img_rgb, subject_type='sprite', background=False):
         arr = np.einsum('...j,kj->...k', arr, warm).clip(0, 1)
         img_w = Image.fromarray((arr * 255).astype(np.uint8), 'RGB')
         img_w = ImageEnhance.Color(img_w).enhance(0.90)
-        img_w = ImageEnhance.Contrast(img_w).enhance(1.02)
+        img_w = ImageEnhance.Contrast(img_w).enhance(1.05 if subject_type == 'hardscape_seiryu_sm' else 1.02)
         img_w = ImageEnhance.Brightness(img_w).enhance(0.99)
         return img_w
 
@@ -610,7 +610,9 @@ def stage7_subject_dither(img_rgb, subject_type='sprite'):
     if subject_type == 'hardscape':
         threshold = 13.0
     elif subject_type == 'hardscape_seiryu':
-        threshold = 8.2
+        threshold = 6.9
+    elif subject_type == 'hardscape_seiryu_sm':
+        threshold = 6.2
     elif subject_type == 'fish':
         threshold = 8.5
     elif subject_type in ('plant', 'plant_multi'):
@@ -638,7 +640,9 @@ def stage8_subject_cinepak(img_rgb, subject_type='sprite'):
     if subject_type == 'hardscape':
         pull = 0.10
     elif subject_type == 'hardscape_seiryu':
-        pull = 0.045
+        pull = 0.034
+    elif subject_type == 'hardscape_seiryu_sm':
+        pull = 0.028
     elif subject_type == 'fish':
         pull = 0.07
     return stage8_cinepak_blocks(img_rgb, pull=pull)
@@ -661,8 +665,11 @@ def stage9_subject_analog(img_rgb, subject_type='sprite'):
         blur_radius = 0.55
         sharpen = 1.35
     elif subject_type == 'hardscape_seiryu':
-        blur_radius = 0.36
-        sharpen = 1.58
+        blur_radius = 0.28
+        sharpen = 1.78
+    elif subject_type == 'hardscape_seiryu_sm':
+        blur_radius = 0.16
+        sharpen = 2.02
     elif subject_type == 'fish':
         blur_radius = 0.35
         sharpen = 1.75
@@ -697,9 +704,13 @@ def stage10_chroma_fringe(img_rgb, alpha):
 # STAGE 11: FINAL DOWNSCALE
 # ──────────────────────────────────────────────────────────────────────────────
 
-def stage11_downscale(img_rgba, frame_w, frame_h):
+def stage11_downscale(img_rgba, frame_w, frame_h, subject_type='sprite'):
     """Downscale to final game sprite dimensions."""
-    return img_rgba.resize((frame_w, frame_h), Image.LANCZOS)
+    resample = Image.LANCZOS
+    if subject_type == 'hardscape_seiryu_sm':
+        # Keep tiny strata detail from turning to mush at 35x24.
+        resample = Image.HAMMING
+    return img_rgba.resize((frame_w, frame_h), resample)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # STAGE 12: SPRITE SHEET ASSEMBLY
@@ -816,7 +827,7 @@ def process_frame(img_rgba_intermediate, frame_w, frame_h, subject_type='sprite'
         result_rgba = merge_alpha(img_rgb, alpha)
 
     # Stage 11: Downscale to game resolution
-    result_rgba = stage11_downscale(result_rgba, frame_w, frame_h)
+    result_rgba = stage11_downscale(result_rgba, frame_w, frame_h, subject_type=subject_type)
 
     # Stage 11b: Final micro-sharpen — recovers detail lost in LANCZOS downscale
     # and gives the crisp-edge quality of digitised FMV sprites.
@@ -826,7 +837,9 @@ def process_frame(img_rgba_intermediate, frame_w, frame_h, subject_type='sprite'
         if subject_type == 'hardscape':
           final_sharpen = 1.18
         elif subject_type == 'hardscape_seiryu':
-          final_sharpen = 1.32
+          final_sharpen = 1.52
+        elif subject_type == 'hardscape_seiryu_sm':
+          final_sharpen = 1.95
         elif subject_type == 'fish':
           final_sharpen = 1.38
         rgb_s = ImageEnhance.Sharpness(rgb_s).enhance(final_sharpen)
@@ -899,7 +912,10 @@ def process_subject(subject_key, spec, dry_run=False):
     rows         = spec.get('rows', 1)
     cols         = spec.get('cols', 1)
     is_shrimp    = (subject_type == 'shrimp')
-    multi_ref    = is_shrimp and len(ref_images) >= 2
+    force_single_source_anim = subject_key.startswith('shrimp/red_cherry/')
+    multi_ref    = is_shrimp and len(ref_images) >= 2 and not force_single_source_anim
+    if force_single_source_anim and is_shrimp and len(ref_images) >= 2:
+        print("  [ANIM] Using single reference for red_cherry cohesion across activity rows")
 
     # ── Multi-reference animated path (shrimp with ≥2 photos) ──────────────
     if multi_ref:

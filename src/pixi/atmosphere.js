@@ -235,8 +235,9 @@ export class Atmosphere {
   // ── Depth haze ──────────────────────────────────────────────
   _buildDepthHaze() {
     const L = this.layers.depthHaze;
-    const films = this._atlasSprite('background_films', GW, GH, 0.07);
-    films.blendMode = 'add';
+    // Keep the FMV film texture very subtle so it does not read as foreground blobs.
+    const films = this._atlasSprite('background_films', GW, GH, 0.02);
+    films.blendMode = 'normal';
     L.addChild(films);
     const grad = verticalGradient(GH, [
       [0.0, 'rgba(120,170,190,0.06)'],
@@ -290,7 +291,7 @@ export class Atmosphere {
     this.surface.x = BEZEL_SIDE;
     this.surface.width = GW - BEZEL_SIDE * 2;
     this.surface.y = WATERLINE_Y - 3;
-    this.surface.alpha = 0.25;
+    this.surface.alpha = 0.16;
     this.surface.blendMode = 'add';
     this.surface.tileScale.set(0.12, 0.1);
     L.addChild(this.surface);

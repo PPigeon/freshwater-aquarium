@@ -14,7 +14,7 @@ export const ASSET_DEFS = {
   wood_redmoor:   { key: 'wood_redmoor',   label: 'Redmoor Root',    w: 150, h: 45, layer: 'hardscape', defaultScale: 0.60 },
   // ── Rock species (6) ──
   stone_seiryu_lg:{ key: 'stone_seiryu_lg',label: 'Seiryu (Large)',  w: 60,  h: 40, layer: 'hardscape', defaultScale: 0.92 },
-  stone_seiryu_sm:{ key: 'stone_seiryu_sm',label: 'Seiryu (Small)',  w: 35,  h: 24, layer: 'hardscape', defaultScale: 0.92 },
+  stone_seiryu_sm:{ key: 'stone_seiryu_sm',label: 'Seiryu (Small)',  w: 40,  h: 28, layer: 'hardscape', defaultScale: 0.82 },
   stone_dragon:   { key: 'stone_dragon',   label: 'Dragon Stone',    w: 70,  h: 45, layer: 'hardscape', defaultScale: 0.82 },
   stone_lava:     { key: 'stone_lava',     label: 'Lava Rock',       w: 50,  h: 35, layer: 'hardscape', defaultScale: 0.85 },
   stone_frodo:    { key: 'stone_frodo',    label: 'Frodo Stone',     w: 65,  h: 40, layer: 'hardscape', defaultScale: 0.88 },

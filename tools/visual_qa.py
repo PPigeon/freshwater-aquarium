@@ -145,6 +145,8 @@ def analyze_asset(path: Path, group: str) -> AssetReport:
         warnings.append("transparent-edge-rgb")
     if group == "hardscape" and edge_touch > max(12, int((w + h) * 0.12)):
         warnings.append("touches-frame-edge")
+    if path.name == "stone_seiryu_sm.png" and luma < 22:
+        warnings.append("soft-seiryu-sm")
     if group in {"shrimp", "fish"} and luma < 18:
         warnings.append("low-creature-contrast")
     if group in {"hardscape", "plants"} and colors > 512:
